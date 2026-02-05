@@ -11,13 +11,17 @@ use bytes::Bytes;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::commands::cluster_slots;
+use super::commands::{asking, cluster_slots};
+use super::errors::parse_redis_error;
 use super::pool::{ConnectionPool, PoolConfig};
 use super::slot::{key_slot, SLOT_COUNT};
 use super::topology::ClusterTopology;
 
 /// Default queue size for multiplexed connections.
 const DEFAULT_QUEUE_SIZE: usize = 1024;
+
+/// Maximum number of redirect retries before giving up.
+const MAX_REDIRECTS: u8 = 5;
 
 /// Helper function to create a connection to a Redis node.
 async fn connect_to_node(address: &str) -> Result<MultiplexedConnection> {
@@ -175,6 +179,165 @@ impl ClusterClient {
         Ok(conn)
     }
 
+    /// Validates that all keys map to the same slot.
+    ///
+    /// This is required for multi-key commands in Redis Cluster to avoid CROSSSLOT errors.
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - The keys to validate
+    ///
+    /// # Returns
+    ///
+    /// Returns the slot number if all keys map to the same slot.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::CrossSlot` if keys map to different slots.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "cluster")]
+    /// # {
+    /// use muxis::cluster::ClusterClient;
+    /// 
+    /// // Keys with same hash tag will map to same slot
+    /// let keys = vec!["user:{123}:profile", "user:{123}:settings"];
+    /// let result = ClusterClient::validate_same_slot(&keys);
+    /// assert!(result.is_ok());
+    /// # }
+    /// ```
+    pub fn validate_same_slot(keys: &[&str]) -> Result<u16> {
+        if keys.is_empty() {
+            return Err(Error::InvalidArgument {
+                message: "no keys provided".to_string(),
+            });
+        }
+
+        let slot = key_slot(keys[0]);
+        for key in keys.iter().skip(1) {
+            let key_slot_val = key_slot(key);
+            if key_slot_val != slot {
+                return Err(Error::CrossSlot);
+            }
+        }
+
+        Ok(slot)
+    }
+
+    /// Gets or creates a connection to a specific address.
+    async fn get_connection_for_address(&self, address: &str) -> Result<MultiplexedConnection> {
+        // Try to find node by address in topology
+        let topology = self.topology.read().await;
+        let node_id = topology
+            .nodes
+            .iter()
+            .find(|(_id, info)| info.address == address)
+            .map(|(id, _info)| id.clone());
+        drop(topology);
+
+        // If we found the node in topology, try to get from pool
+        if let Some(node_id) = node_id {
+            if let Some(conn) = self.pool.get_connection(&node_id).await {
+                return Ok(conn);
+            }
+        }
+
+        // Create new connection
+        connect_to_node(address).await
+    }
+
+    /// Executes a command with automatic redirect handling.
+    ///
+    /// This method handles MOVED and ASK redirects transparently:
+    /// - MOVED: Updates topology cache and retries on the new node
+    /// - ASK: Sends ASKING command and retries once on the temporary node
+    ///
+    /// # Arguments
+    ///
+    /// * `frame` - The command frame to execute
+    /// * `slot` - The slot number for the command (used for routing)
+    ///
+    /// # Returns
+    ///
+    /// Returns the response frame from Redis.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Maximum redirect count exceeded
+    /// - Connection fails
+    /// - Command execution fails
+    async fn execute_with_redirects(&self, frame: Frame, slot: u16) -> Result<Frame> {
+        let mut redirects = 0;
+        let current_frame = frame;
+
+        loop {
+            // Get connection for the slot
+            let conn = self.get_connection_for_slot(slot).await?;
+
+            // Execute command
+            let result = conn.send_command(current_frame.clone()).await;
+
+            match result {
+                Ok(response) => return Ok(response),
+                Err(Error::Server { message }) => {
+                    // Parse the error to check for redirects
+                    let error = parse_redis_error(message.as_bytes());
+
+                    match error {
+                        Error::Moved { slot: _new_slot, address: _ } => {
+                            // MOVED redirect: permanent slot migration
+                            redirects += 1;
+                            if redirects > MAX_REDIRECTS {
+                                return Err(Error::Protocol {
+                                    message: format!(
+                                        "exceeded maximum redirects ({})",
+                                        MAX_REDIRECTS
+                                    ),
+                                });
+                            }
+
+                            // Refresh topology to learn about new slot assignment
+                            self.refresh_topology().await?;
+
+                            // Retry with updated topology (loop will use new_slot implicitly)
+                            continue;
+                        }
+                        Error::Ask { slot: _ask_slot, address } => {
+                            // ASK redirect: temporary migration, use ASKING
+                            redirects += 1;
+                            if redirects > MAX_REDIRECTS {
+                                return Err(Error::Protocol {
+                                    message: format!(
+                                        "exceeded maximum redirects ({})",
+                                        MAX_REDIRECTS
+                                    ),
+                                });
+                            }
+
+                            // Get connection to the ASK address
+                            let ask_conn = self.get_connection_for_address(&address).await?;
+
+                            // Send ASKING command
+                            let asking_cmd = asking();
+                            ask_conn.send_command(asking_cmd.into_frame()).await?;
+
+                            // Retry the command on the ASK node
+                            return ask_conn.send_command(current_frame).await;
+                        }
+                        _ => {
+                            // Other errors: return as-is
+                            return Err(error);
+                        }
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
     /// Returns the number of known nodes in the cluster.
     pub async fn node_count(&self) -> usize {
         let topology = self.topology.read().await;
@@ -203,6 +366,8 @@ impl ClusterClient {
 
     /// Gets a string value from Redis.
     ///
+    /// This method automatically handles MOVED and ASK redirects.
+    ///
     /// # Arguments
     ///
     /// * `key` - The key to retrieve
@@ -210,12 +375,27 @@ impl ClusterClient {
     /// # Returns
     ///
     /// Returns the value if the key exists, or None if the key does not exist.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(feature = "cluster")]
+    /// # {
+    /// # use muxis::cluster::ClusterClient;
+    /// # async fn example() -> muxis::Result<()> {
+    /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
+    /// 
+    /// if let Some(value) = client.get("mykey").await? {
+    ///     println!("Value: {:?}", value);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// # }
+    /// ```
     pub async fn get(&self, key: &str) -> Result<Option<Bytes>> {
         let slot = key_slot(key);
-        let conn = self.get_connection_for_slot(slot).await?;
-
         let cmd = crate::core::command::get(key.to_string());
-        let frame = conn.send_command(cmd.into_frame()).await?;
+        let frame = self.execute_with_redirects(cmd.into_frame(), slot).await?;
 
         match frame {
             Frame::BulkString(data) => Ok(data),
@@ -228,20 +408,37 @@ impl ClusterClient {
 
     /// Sets a string value in Redis.
     ///
+    /// This method automatically handles MOVED and ASK redirects.
+    ///
     /// # Arguments
     ///
     /// * `key` - The key to set
     /// * `value` - The value to store
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(feature = "cluster")]
+    /// # {
+    /// # use muxis::cluster::ClusterClient;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> muxis::Result<()> {
+    /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
+    /// client.set("mykey", Bytes::from("value")).await?;
+    /// # Ok(())
+    /// # }
+    /// # }
+    /// ```
     pub async fn set(&self, key: &str, value: Bytes) -> Result<()> {
         let slot = key_slot(key);
-        let conn = self.get_connection_for_slot(slot).await?;
-
         let cmd = crate::core::command::set(key.to_string(), value);
-        conn.send_command(cmd.into_frame()).await?;
+        self.execute_with_redirects(cmd.into_frame(), slot).await?;
         Ok(())
     }
 
     /// Deletes a key from Redis.
+    ///
+    /// This method automatically handles MOVED and ASK redirects.
     ///
     /// # Arguments
     ///
@@ -250,12 +447,25 @@ impl ClusterClient {
     /// # Returns
     ///
     /// Returns 1 if the key was deleted, 0 if the key did not exist.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(feature = "cluster")]
+    /// # {
+    /// # use muxis::cluster::ClusterClient;
+    /// # async fn example() -> muxis::Result<()> {
+    /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
+    /// let deleted = client.del("mykey").await?;
+    /// println!("Deleted {} keys", deleted);
+    /// # Ok(())
+    /// # }
+    /// # }
+    /// ```
     pub async fn del(&self, key: &str) -> Result<i64> {
         let slot = key_slot(key);
-        let conn = self.get_connection_for_slot(slot).await?;
-
         let cmd = crate::core::command::del(key.to_string());
-        let frame = conn.send_command(cmd.into_frame()).await?;
+        let frame = self.execute_with_redirects(cmd.into_frame(), slot).await?;
 
         match frame {
             Frame::Integer(n) => Ok(n),
@@ -267,6 +477,8 @@ impl ClusterClient {
 
     /// Checks if a key exists in Redis.
     ///
+    /// This method automatically handles MOVED and ASK redirects.
+    ///
     /// # Arguments
     ///
     /// * `key` - The key to check
@@ -274,12 +486,27 @@ impl ClusterClient {
     /// # Returns
     ///
     /// Returns true if the key exists, false otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[cfg(feature = "cluster")]
+    /// # {
+    /// # use muxis::cluster::ClusterClient;
+    /// # async fn example() -> muxis::Result<()> {
+    /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
+    /// 
+    /// if client.exists("mykey").await? {
+    ///     println!("Key exists");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// # }
+    /// ```
     pub async fn exists(&self, key: &str) -> Result<bool> {
         let slot = key_slot(key);
-        let conn = self.get_connection_for_slot(slot).await?;
-
         let cmd = crate::core::command::exists(vec![key.to_string()]);
-        let frame = conn.send_command(cmd.into_frame()).await?;
+        let frame = self.execute_with_redirects(cmd.into_frame(), slot).await?;
 
         match frame {
             Frame::Integer(n) => Ok(n > 0),
@@ -355,5 +582,96 @@ mod tests {
         };
 
         assert!(!client.is_fully_covered().await);
+    }
+
+    #[tokio::test]
+    async fn test_max_redirects_constant() {
+        // Document expected redirect limits for reference
+        // MAX_REDIRECTS = 5, which is reasonable for cluster operations
+        let pool_config = PoolConfig::default();
+        let pool = Arc::new(ConnectionPool::new(pool_config));
+
+        let _client = ClusterClient {
+            seed_nodes: Arc::new(vec!["redis://127.0.0.1:7000".to_string()]),
+            topology: Arc::new(RwLock::new(ClusterTopology::new())),
+            pool,
+        };
+
+        // Test passes if we can create a client (constant is defined)
+        assert_eq!(MAX_REDIRECTS, 5);
+    }
+
+    #[tokio::test]
+    async fn test_get_connection_for_address_not_in_topology() {
+        let pool_config = PoolConfig::default();
+        let pool = Arc::new(ConnectionPool::new(pool_config));
+
+        let client = ClusterClient {
+            seed_nodes: Arc::new(vec!["redis://127.0.0.1:7000".to_string()]),
+            topology: Arc::new(RwLock::new(ClusterTopology::new())),
+            pool,
+        };
+
+        // Should attempt to create connection even if address not in topology
+        // This will fail because nothing is listening, but tests the logic
+        let result = client.get_connection_for_address("127.0.0.1:9999").await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_default_queue_size() {
+        // Ensure DEFAULT_QUEUE_SIZE is reasonable
+        assert_eq!(DEFAULT_QUEUE_SIZE, 1024);
+    }
+
+    #[test]
+    fn test_validate_same_slot_single_key() {
+        let keys = vec!["mykey"];
+        let result = ClusterClient::validate_same_slot(&keys);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_same_slot_same_hash_tag() {
+        // Keys with same hash tag should map to same slot
+        let keys = vec!["user:{123}:profile", "user:{123}:settings"];
+        let result = ClusterClient::validate_same_slot(&keys);
+        assert!(result.is_ok());
+        let slot = result.unwrap();
+        // Verify both keys map to this slot
+        assert_eq!(key_slot("user:{123}:profile"), slot);
+        assert_eq!(key_slot("user:{123}:settings"), slot);
+    }
+
+    #[test]
+    fn test_validate_same_slot_different_slots() {
+        // Different keys should fail (unless they happen to map to same slot)
+        let keys = vec!["key1", "key2"];
+        let slot1 = key_slot("key1");
+        let slot2 = key_slot("key2");
+        
+        let result = ClusterClient::validate_same_slot(&keys);
+        if slot1 != slot2 {
+            // Should return CrossSlot error
+            assert!(matches!(result, Err(Error::CrossSlot)));
+        } else {
+            // By chance they map to same slot
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_validate_same_slot_empty() {
+        let keys: Vec<&str> = vec![];
+        let result = ClusterClient::validate_same_slot(&keys);
+        assert!(matches!(result, Err(Error::InvalidArgument { .. })));
+    }
+
+    #[test]
+    fn test_validate_same_slot_multiple_same_slot() {
+        // Using hash tags to guarantee same slot
+        let keys = vec!["{user}:1", "{user}:2", "{user}:3"];
+        let result = ClusterClient::validate_same_slot(&keys);
+        assert!(result.is_ok());
     }
 }
