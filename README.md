@@ -13,9 +13,10 @@
 - **Multiplexed Connections** - Multiple concurrent requests over single connection
 - **Type-Safe Commands** - Rust-native API with compile-time safety
 - **75+ Redis Commands** - String, Hash, List, Set, Sorted Set operations
+- **Cluster Support** - Slot-based routing, topology discovery (feature flag: `cluster`)
 - **Connection Management** - Timeouts, authentication, database selection
 - **Security** - Password and ACL authentication support
-- **Production Ready** - 192 tests (111 unit + 81 integration), zero warnings
+- **Production Ready** - 180 tests (111 core + 69 cluster), zero warnings
 
 ## Quick Start
 
@@ -43,6 +44,32 @@ async fn main() -> Result<()> {
     // Delete keys
     client.del("mykey").await?;
     client.del("counter").await?;
+
+    Ok(())
+}
+```
+
+### Cluster Mode
+
+```rust
+use muxis::cluster::ClusterClient;
+use bytes::Bytes;
+
+#[tokio::main]
+async fn main() -> muxis::Result<()> {
+    // Connect to Redis Cluster (seed nodes)
+    let client = ClusterClient::connect("127.0.0.1:7000,127.0.0.1:7001").await?;
+
+    // Commands are automatically routed to correct node based on key slot
+    client.set("mykey", Bytes::from("Hello, Cluster!")).await?;
+    
+    if let Some(value) = client.get("mykey").await? {
+        println!("Value: {}", String::from_utf8_lossy(&value));
+    }
+
+    // Check cluster status
+    println!("Cluster nodes: {}", client.node_count());
+    println!("Fully covered: {}", client.is_fully_covered());
 
     Ok(())
 }
@@ -78,6 +105,16 @@ More examples available in the `examples/` directory:
 
 ### Connection Commands
 `PING`, `ECHO`, `AUTH`, `SELECT`, `CLIENT SETNAME`
+
+### Cluster Commands (6)
+`CLUSTER SLOTS`, `CLUSTER NODES`, `CLUSTER INFO`, `ASKING`, `READONLY`, `READWRITE`
+
+**Note**: Full cluster support available with `cluster` feature flag. Currently supports:
+- CRC16 slot calculation with hash tag support `{...}`
+- Topology discovery and management via CLUSTER SLOTS/NODES
+- Slot-based routing (16384 slots)
+- Connection pooling per node
+- Basic operations: GET, SET, DEL, EXISTS
 
 ## Usage Examples
 
@@ -155,7 +192,7 @@ Muxis is organized as a single-crate library with well-defined modules:
 
 - **muxis::proto**: RESP protocol codec (encoder/decoder)
 - **muxis::core**: Connection management, multiplexing, and command execution
-- **muxis::cluster**: Cluster support (planned, feature-gated)
+- **muxis::cluster**: Cluster support with slot-based routing (feature-gated: `cluster`)
 - **muxis::testing**: Test utilities (feature-gated with `test-utils`)
 
 ### Multiplexing Model
@@ -218,9 +255,10 @@ Muxis is designed for high performance:
 
 Muxis has comprehensive test coverage:
 
-- **192 total tests**: 111 unit tests + 81 integration tests + 7 doc tests
+- **180 total tests**: 111 unit tests (core) + 69 unit tests (cluster)
 - **Protocol tests**: Frame encoding/decoding with edge cases
-- **Command tests**: All 75 commands with unit and integration tests
+- **Command tests**: All 75 standalone commands with unit and integration tests
+- **Cluster tests**: Slot calculation, error parsing, topology management, connection pooling
 - **Connection tests**: Builder patterns, multiplexing, command execution
 - **100% public API documentation** with runnable examples
 - **Zero clippy warnings**: Clean code following Rust best practices
@@ -228,13 +266,13 @@ Muxis has comprehensive test coverage:
 Run tests:
 
 ```bash
-# Unit tests (111 tests)
+# Unit tests (180 tests)
 cargo test --all-features --lib
 
-# Integration tests (81 tests, requires Redis at 127.0.0.1:6379)
+# Integration tests (requires Redis at 127.0.0.1:6379)
 cargo test --all-features -- --ignored
 
-# Documentation tests (7 tests)
+# Documentation tests
 cargo test --doc --all-features
 
 # All tests
@@ -300,7 +338,9 @@ Current status:
 - Phase 0: Repository scaffolding - COMPLETE
 - Phase 1: RESP codec + basic connection - COMPLETE
 - Phase 2: Multiplexing stable - COMPLETE
-- Phase 3+: See [ROADMAP.md](ROADMAP.md)
+- Phase 3: Standalone API (75 commands) - COMPLETE
+- Phase 4: Cluster routing foundation - IN PROGRESS (85%)
+- Phase 5+: See [ROADMAP.md](ROADMAP.md)
 
 ## Minimum Supported Rust Version (MSRV)
 

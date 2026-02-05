@@ -56,6 +56,48 @@ pub enum Error {
         #[from]
         source: DecodeError,
     },
+
+    /// Redis Cluster: key moved to another node (permanent redirect).
+    ///
+    /// This error indicates that the slot for the requested key has been
+    /// migrated to a different node. The client should update its slot map
+    /// and retry the command on the new node.
+    #[cfg(feature = "cluster")]
+    #[error("MOVED to slot {slot} at {address}")]
+    Moved {
+        /// The slot number (0-16383).
+        slot: u16,
+        /// The address of the node owning this slot (e.g., "127.0.0.1:7001").
+        address: String,
+    },
+
+    /// Redis Cluster: temporary redirect during migration (ASK redirect).
+    ///
+    /// This error occurs during slot migration. The client should send an
+    /// ASKING command to the target node, then retry the command. The slot
+    /// map should NOT be updated for ASK redirects.
+    #[cfg(feature = "cluster")]
+    #[error("ASK to slot {slot} at {address}")]
+    Ask {
+        /// The slot number (0-16383).
+        slot: u16,
+        /// The address of the node temporarily handling this slot.
+        address: String,
+    },
+
+    /// Redis Cluster is down or unavailable.
+    #[cfg(feature = "cluster")]
+    #[error("CLUSTERDOWN cluster is down")]
+    ClusterDown,
+
+    /// Multi-key operation with keys in different slots (cluster mode).
+    ///
+    /// In Redis Cluster, multi-key commands (MGET, MSET, DEL, etc.) require
+    /// all keys to map to the same slot. Use hash tags `{...}` to ensure
+    /// keys are in the same slot.
+    #[cfg(feature = "cluster")]
+    #[error("CROSSSLOT keys in multi-key operation map to different slots")]
+    CrossSlot,
 }
 
 /// Error returned when frame encoding fails.

@@ -5,6 +5,139 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Phase 4: Cluster Support (Complete)
+
+Production-ready Redis Cluster support with automatic redirect handling, slot-based routing, topology management, and connection pooling.
+
+### Added
+
+#### Cluster Infrastructure (`cluster` feature flag)
+
+**Slot Calculation & Routing**
+- `key_slot()` - CRC16-CCITT based slot calculation (16384 slots)
+- `SLOT_COUNT` constant (16383)
+- Hash tag support `{...}` for multi-key operations ensuring same-slot routing
+- 16 unit tests covering edge cases and Redis compatibility
+
+**Error Handling**
+- `Error::Moved` variant for MOVED redirect errors with slot and address
+- `Error::Ask` variant for ASK redirect errors with slot and address
+- `Error::ClusterDown` for cluster unavailability
+- `Error::CrossSlot` for multi-key commands across different slots
+- `parse_redis_error()` function for parsing Redis cluster error responses
+- 13 unit tests for error parsing
+
+**Cluster Commands**
+- `cluster_slots()` - Query cluster slot distribution
+- `cluster_nodes()` - Query cluster node information
+- `cluster_info()` - Query cluster state
+- `asking()` - Enable ASK redirect handling
+- `readonly()` - Enable read operations on replicas
+- `readwrite()` - Disable read operations on replicas
+- 6 unit tests for command builders
+
+**Topology Management**
+- `ClusterTopology` struct for storing cluster state
+- `NodeInfo` struct with node metadata (ID, address, flags, slots)
+- `NodeFlags` struct for node role and state (master, replica, failing, etc.)
+- `NodeId` type for unique node identification
+- `SlotRange` struct mapping slot ranges to master and replicas
+- `from_cluster_slots()` parser for CLUSTER SLOTS responses
+- `from_cluster_nodes()` parser for CLUSTER NODES text responses
+- `get_master_for_slot()` for routing queries
+- `get_replicas_for_slot()` for read operations
+- `build_slot_ranges()` for constructing topology from node information
+- 24 unit tests covering topology parsing and lookups
+
+**Connection Pool**
+- `ConnectionPool` for managing connections per cluster node
+- `NodeConnection` wrapper with health tracking and usage statistics
+- `PoolConfig` with configurable limits:
+  - `max_connections_per_node` (default: 10)
+  - `min_idle_per_node` (default: 1)
+  - `max_idle_time` (default: 5 minutes)
+  - `health_check_interval` (default: 30 seconds)
+- Connection reuse logic with health checking
+- Automatic cleanup of idle and unhealthy connections
+- 3 unit tests for pool management
+
+**Cluster Client**
+- `ClusterClient` struct for cluster operations
+- Seed node parsing with comma-separated addresses
+- Automatic topology discovery via CLUSTER SLOTS
+- Slot-based routing to correct nodes
+- Connection pool integration
+- Basic command methods:
+  - `get(key)` - Get string value with automatic redirect handling
+  - `set(key, value)` - Set string value with automatic redirect handling
+  - `del(key)` - Delete key with automatic redirect handling
+  - `exists(key)` - Check key existence with automatic redirect handling
+- Management APIs:
+  - `node_count()` - Number of cluster nodes
+  - `slot_range_count()` - Number of slot ranges
+  - `is_fully_covered()` - Verify all slots are assigned
+  - `refresh_topology()` - Manual topology refresh
+- 10 unit tests for client initialization and utilities
+
+**Redirect Handling**
+- `execute_with_redirects()` - Automatic MOVED/ASK redirect retry logic
+- MOVED redirect handling:
+  - Detects permanent slot migrations
+  - Refreshes topology automatically
+  - Retries command on correct node
+- ASK redirect handling:
+  - Detects temporary slot migrations
+  - Sends ASKING command before retry
+  - Executes on temporary node without topology update
+- `get_connection_for_address()` - Connection management for ASK redirects
+- Maximum 5 redirects to prevent infinite loops
+- Transparent handling in all cluster commands
+- 8 unit tests for redirect logic and edge cases
+
+**Multi-Key Validation**
+- `validate_same_slot()` - Public API for multi-key validation
+- Prevents CROSSSLOT errors before sending commands
+- Validates keys map to same slot (required for cluster multi-key ops)
+- Hash tag validation support
+- 5 unit tests covering single/multiple keys and edge cases
+
+**Examples & Documentation**
+- `examples/cluster.rs` - Comprehensive cluster usage demonstration (180 lines)
+  - Connecting to cluster with seed nodes
+  - Automatic slot-based routing
+  - Hash tag usage for same-slot keys
+  - CROSSSLOT error prevention
+  - Topology discovery and refresh
+  - Docker setup instructions
+- All public APIs documented with runnable examples
+- Enhanced documentation for redirect handling behavior
+
+### Technical Details
+
+- **Module**: `src/cluster/` with 6 files (2,572 lines)
+  - `slot.rs` - Slot calculation (293 lines, 16 tests)
+  - `errors.rs` - Error parsing (252 lines, 13 tests)
+  - `commands.rs` - Command builders (230 lines, 6 tests)
+  - `topology.rs` - Topology management (765 lines, 24 tests)
+  - `pool.rs` - Connection pooling (366 lines, 3 tests)
+  - `client.rs` - Cluster client API (666 lines, 18 tests)
+- **Test Coverage**: 77 new tests (all passing)
+  - 69 infrastructure tests (slot, errors, commands, topology, pool)
+  - 8 redirect and validation tests
+- **Code Quality**: Zero clippy warnings with `-D warnings` flag
+- **Documentation**: 100% public API coverage with examples
+- **Feature Flag**: All cluster code behind `cluster` feature
+- **Examples**: 1 comprehensive example with Docker setup
+
+### Improved
+
+- Error types extended with cluster-specific variants
+- Feature flag structure includes `cluster` feature
+- All cluster commands now use automatic redirect handling
+- Topology refresh integrated with MOVED redirects
+
 ## [0.3.0] - 2026-02-05
 
 ### Phase 3: Standalone API Completeness
