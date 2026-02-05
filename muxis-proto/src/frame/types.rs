@@ -1,5 +1,14 @@
 use bytes::Bytes;
 
+/// A RESP (Redis Serialization Protocol) frame.
+///
+/// This enum represents all frame types defined in the RESP protocol:
+/// - SimpleString: Status responses like "OK"
+/// - Error: Error responses from the server
+/// - Integer: Numeric responses
+/// - BulkString: Binary-safe string data
+/// - Array: Command arguments and array responses
+/// - Null: NULL value
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
     SimpleString(Vec<u8>),
@@ -11,6 +20,13 @@ pub enum Frame {
 }
 
 impl Frame {
+    /// Converts the frame to a human-readable string representation.
+    ///
+    /// For complex frames like arrays, returns a formatted string representation.
+    ///
+    /// # Returns
+    ///
+    /// Some(String) if conversion succeeds, None for frames without string representation
     pub fn to_string(&self) -> Option<String> {
         match self {
             Frame::SimpleString(s) => String::from_utf8(s.clone()).ok(),
@@ -28,6 +44,11 @@ impl Frame {
         }
     }
 
+    /// Attempts to extract a bulk string from this frame.
+    ///
+    /// # Returns
+    ///
+    /// Some(Bytes) if this is a BulkString, None otherwise
     pub fn to_bulk_string(&self) -> Option<Bytes> {
         match self {
             Frame::BulkString(b) => b.clone(),
@@ -35,6 +56,11 @@ impl Frame {
         }
     }
 
+    /// Attempts to extract an array from this frame.
+    ///
+    /// # Returns
+    ///
+    /// Some(`Vec<Frame>`) if this is an Array, None otherwise
     pub fn to_array(&self) -> Option<Vec<Frame>> {
         match self {
             Frame::Array(a) => Some(a.clone()),
@@ -42,6 +68,11 @@ impl Frame {
         }
     }
 
+    /// Attempts to extract an integer from this frame.
+    ///
+    /// # Returns
+    ///
+    /// Some(i64) if this is an Integer, None otherwise
     pub fn to_int(&self) -> Option<i64> {
         match self {
             Frame::Integer(i) => Some(*i),
@@ -49,6 +80,7 @@ impl Frame {
         }
     }
 
+    /// Returns true if this frame is Null.
     pub fn is_null(&self) -> bool {
         matches!(self, Frame::Null)
     }

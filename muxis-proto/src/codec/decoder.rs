@@ -2,22 +2,55 @@ use bytes::Buf;
 
 use crate::frame::Frame;
 
+/// A RESP decoder that converts bytes to [`Frame`] types.
+///
+/// The decoder handles streaming input and can decode frames incrementally.
+/// Call [`append`](Decoder::append) to add data, then [`decode`](Decoder::decode)
+/// to parse frames. Returns `Ok(None)` when more data is needed.
+///
+/// # Example
+///
+/// ```ignore
+/// use muxis_proto::codec::Decoder;
+/// use muxis_proto::Frame;
+///
+/// let mut decoder = Decoder::new();
+/// decoder.append(b"+OK\r\n");
+/// let frame = decoder.decode().unwrap().unwrap();
+/// ```
 #[derive(Debug)]
 pub struct Decoder {
     buf: bytes::BytesMut,
 }
 
 impl Decoder {
+    /// Creates a new decoder with an empty buffer.
     pub fn new() -> Self {
         Self {
             buf: bytes::BytesMut::new(),
         }
     }
 
+    /// Appends raw bytes to the internal buffer.
+    ///
+    /// Call this method when new data arrives from the network.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - Raw bytes to append
     pub fn append(&mut self, data: &[u8]) {
         self.buf.extend_from_slice(data);
     }
 
+    /// Attempts to decode a frame from the buffer.
+    ///
+    /// Returns `Ok(Some(Frame))` if a complete frame was decoded.
+    /// Returns `Ok(None)` if more data is needed.
+    /// Returns `Err(...)` if the data is malformed.
+    ///
+    /// # Returns
+    ///
+    /// Decoded frame, None if incomplete, or error
     pub fn decode(&mut self) -> Result<Option<Frame>, String> {
         if self.buf.is_empty() {
             return Ok(None);
@@ -123,6 +156,11 @@ impl Decoder {
         Ok(Some(Frame::Array(items)))
     }
 
+    /// Searches for the next CRLF sequence in the buffer.
+    ///
+    /// # Returns
+    ///
+    /// Some(index) if found, None if not enough data
     fn find_crlf(&self) -> Option<usize> {
         if self.buf.len() < 2 {
             return None;
@@ -135,6 +173,7 @@ impl Decoder {
         None
     }
 
+    /// Returns true if the buffer contains at least some data that could be a frame.
     pub fn has_decodable_frame(&self) -> bool {
         !self.buf.is_empty()
     }

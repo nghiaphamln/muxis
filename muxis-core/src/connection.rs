@@ -7,6 +7,35 @@ use muxis_proto::codec::{Decoder, Encoder};
 use muxis_proto::frame::Frame;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 
+/// A connection to a Redis server.
+///
+/// This struct wraps an underlying stream (TCP, TLS, etc.) and handles
+/// RESP frame encoding and decoding. It implements [`AsyncRead`] and [`AsyncWrite`]
+/// for composability with other async I/O types.
+///
+/// # Example
+///
+/// ```ignore
+/// use muxis_core::Connection;
+/// use tokio::net::TcpStream;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let stream = TcpStream::connect("127.0.0.1:6379").await?;
+///     let mut conn = Connection::new(stream);
+///
+///     // Write a PING command
+///     use muxis_proto::Frame;
+///     let cmd = Frame::Array(vec![Frame::BulkString(Some("PING".into()))]);
+///     conn.write_frame(&cmd).await?;
+///
+///     // Read the PONG response
+///     let resp = conn.read_frame().await?;
+///     println!("{:?}", resp);
+///
+///     Ok(())
+/// }
+/// ```
 pub struct Connection<S> {
     stream: S,
     decoder: Decoder,
@@ -19,6 +48,13 @@ impl<S> Connection<S>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
+    /// Creates a new connection with the given stream.
+    ///
+    /// Initializes a connection with no timeouts configured.
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - The underlying async stream (TCP, TLS, etc.)
     pub fn new(stream: S) -> Self {
         Self {
             stream,
@@ -29,6 +65,16 @@ where
         }
     }
 
+    /// Configures read and write timeouts for this connection.
+    ///
+    /// # Arguments
+    ///
+    /// * `read_timeout` - Optional duration for read operations
+    /// * `write_timeout` - Optional duration for write operations
+    ///
+    /// # Returns
+    ///
+    /// Self for method chaining
     pub fn with_timeouts(
         mut self,
         read_timeout: Option<Duration>,
@@ -39,6 +85,17 @@ where
         self
     }
 
+    /// Writes a frame to the connection.
+    ///
+    /// Encodes the frame using RESP protocol and sends it to the server.
+    ///
+    /// # Arguments
+    ///
+    /// * `frame` - The frame to send
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if encoding or writing fails
     pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), std::io::Error> {
         self.encoder.encode(frame);
         let data = self.encoder.take();
@@ -46,6 +103,19 @@ where
         Ok(())
     }
 
+    /// Reads a frame from the connection.
+    ///
+    /// Waits for incoming data, decodes RESP frames, and returns a complete frame.
+    /// This method handles partial reads internally and will continue reading
+    /// until a complete frame is received or an error occurs.
+    ///
+    /// # Returns
+    ///
+    /// The decoded frame on success
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the connection is closed or a protocol error occurs
     pub async fn read_frame(&mut self) -> Result<Frame, crate::Error> {
         loop {
             match self.decoder.decode() {

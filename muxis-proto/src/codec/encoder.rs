@@ -2,17 +2,38 @@ use bytes::{BufMut, Bytes, BytesMut};
 
 use crate::frame::Frame;
 
+/// A RESP encoder that converts [`Frame`] types to bytes.
+///
+/// The encoder accumulates data in an internal buffer and can be used
+/// to encode multiple frames sequentially.
+///
+/// # Example
+///
+/// ```ignore
+/// use muxis_proto::codec::Encoder;
+/// use muxis_proto::Frame;
+///
+/// let mut encoder = Encoder::new();
+/// encoder.encode(&Frame::SimpleString(b"OK".to_vec()));
+/// let data = encoder.finish();
+/// ```
 pub struct Encoder {
     buf: BytesMut,
 }
 
 impl Encoder {
+    /// Creates a new encoder with an empty buffer.
     pub fn new() -> Self {
         Self {
             buf: BytesMut::new(),
         }
     }
 
+    /// Encodes a frame into the internal buffer using RESP protocol.
+    ///
+    /// # Arguments
+    ///
+    /// * `frame` - The frame to encode
     pub fn encode(&mut self, frame: &Frame) {
         match frame {
             Frame::SimpleString(s) => {
@@ -56,10 +77,22 @@ impl Encoder {
         }
     }
 
+    /// Consumes the encoder and returns the encoded data.
+    ///
+    /// # Returns
+    ///
+    /// The accumulated bytes as a [`BytesMut`]
     pub fn finish(self) -> BytesMut {
         self.buf
     }
 
+    /// Takes the encoded data from the buffer, leaving it empty.
+    ///
+    /// Unlike [`finish`](Encoder::finish), this method allows reusing the encoder.
+    ///
+    /// # Returns
+    ///
+    /// The accumulated bytes
     pub fn take(&mut self) -> BytesMut {
         std::mem::replace(&mut self.buf, BytesMut::new())
     }
@@ -71,6 +104,17 @@ impl Default for Encoder {
     }
 }
 
+/// Encodes a frame and returns the result as bytes.
+///
+/// This is a convenience function for encoding a single frame.
+///
+/// # Arguments
+///
+/// * `frame` - The frame to encode
+///
+/// # Returns
+///
+/// The encoded bytes
 pub fn encode_frame(frame: &Frame) -> Bytes {
     let mut encoder = Encoder::new();
     encoder.encode(frame);
