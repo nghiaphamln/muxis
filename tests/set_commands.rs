@@ -10,13 +10,25 @@ async fn test_sadd_and_srem() {
 
     client.del("myset").await.ok();
 
-    let added = client.sadd("myset", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    let added = client
+        .sadd(
+            "myset",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
     assert_eq!(added, 3);
 
-    let added_again = client.sadd("myset", &[Bytes::from("a"), Bytes::from("d")]).await.unwrap();
+    let added_again = client
+        .sadd("myset", &[Bytes::from("a"), Bytes::from("d")])
+        .await
+        .unwrap();
     assert_eq!(added_again, 1);
 
-    let removed = client.srem("myset", &[Bytes::from("a"), Bytes::from("b")]).await.unwrap();
+    let removed = client
+        .srem("myset", &[Bytes::from("a"), Bytes::from("b")])
+        .await
+        .unwrap();
     assert_eq!(removed, 2);
 }
 
@@ -28,7 +40,13 @@ async fn test_smembers() {
         .expect("Failed to connect");
 
     client.del("memberset").await.ok();
-    client.sadd("memberset", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .sadd(
+            "memberset",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     let members = client.smembers("memberset").await.unwrap();
     assert_eq!(members.len(), 3);
@@ -45,12 +63,21 @@ async fn test_sismember() {
         .expect("Failed to connect");
 
     client.del("ismemberset").await.ok();
-    client.sadd("ismemberset", &[Bytes::from("a"), Bytes::from("b")]).await.unwrap();
+    client
+        .sadd("ismemberset", &[Bytes::from("a"), Bytes::from("b")])
+        .await
+        .unwrap();
 
-    let is_member = client.sismember("ismemberset", Bytes::from("a")).await.unwrap();
+    let is_member = client
+        .sismember("ismemberset", Bytes::from("a"))
+        .await
+        .unwrap();
     assert!(is_member);
 
-    let not_member = client.sismember("ismemberset", Bytes::from("c")).await.unwrap();
+    let not_member = client
+        .sismember("ismemberset", Bytes::from("c"))
+        .await
+        .unwrap();
     assert!(!not_member);
 }
 
@@ -66,7 +93,13 @@ async fn test_scard() {
     let size = client.scard("cardset").await.unwrap();
     assert_eq!(size, 0);
 
-    client.sadd("cardset", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .sadd(
+            "cardset",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     let size2 = client.scard("cardset").await.unwrap();
     assert_eq!(size2, 3);
@@ -80,7 +113,13 @@ async fn test_spop() {
         .expect("Failed to connect");
 
     client.del("popset").await.ok();
-    client.sadd("popset", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .sadd(
+            "popset",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     let popped = client.spop("popset").await.unwrap();
     assert!(popped.is_some());
@@ -97,7 +136,13 @@ async fn test_srandmember() {
         .expect("Failed to connect");
 
     client.del("randset").await.ok();
-    client.sadd("randset", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .sadd(
+            "randset",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     let random = client.srandmember("randset").await.unwrap();
     assert!(random.is_some());
@@ -116,8 +161,20 @@ async fn test_sdiff() {
     client.del("set1").await.ok();
     client.del("set2").await.ok();
 
-    client.sadd("set1", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
-    client.sadd("set2", &[Bytes::from("b"), Bytes::from("c"), Bytes::from("d")]).await.unwrap();
+    client
+        .sadd(
+            "set1",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
+    client
+        .sadd(
+            "set2",
+            &[Bytes::from("b"), Bytes::from("c"), Bytes::from("d")],
+        )
+        .await
+        .unwrap();
 
     let diff = client.sdiff(&["set1", "set2"]).await.unwrap();
     assert_eq!(diff.len(), 1);
@@ -134,8 +191,20 @@ async fn test_sinter() {
     client.del("set3").await.ok();
     client.del("set4").await.ok();
 
-    client.sadd("set3", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
-    client.sadd("set4", &[Bytes::from("b"), Bytes::from("c"), Bytes::from("d")]).await.unwrap();
+    client
+        .sadd(
+            "set3",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
+    client
+        .sadd(
+            "set4",
+            &[Bytes::from("b"), Bytes::from("c"), Bytes::from("d")],
+        )
+        .await
+        .unwrap();
 
     let inter = client.sinter(&["set3", "set4"]).await.unwrap();
     assert_eq!(inter.len(), 2);
@@ -153,8 +222,14 @@ async fn test_sunion() {
     client.del("set5").await.ok();
     client.del("set6").await.ok();
 
-    client.sadd("set5", &[Bytes::from("a"), Bytes::from("b")]).await.unwrap();
-    client.sadd("set6", &[Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .sadd("set5", &[Bytes::from("a"), Bytes::from("b")])
+        .await
+        .unwrap();
+    client
+        .sadd("set6", &[Bytes::from("b"), Bytes::from("c")])
+        .await
+        .unwrap();
 
     let union = client.sunion(&["set5", "set6"]).await.unwrap();
     assert_eq!(union.len(), 3);
@@ -174,10 +249,22 @@ async fn test_sdiffstore() {
     client.del("diffsrc2").await.ok();
     client.del("diffdest").await.ok();
 
-    client.sadd("diffsrc1", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
-    client.sadd("diffsrc2", &[Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .sadd(
+            "diffsrc1",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
+    client
+        .sadd("diffsrc2", &[Bytes::from("b"), Bytes::from("c")])
+        .await
+        .unwrap();
 
-    let count = client.sdiffstore("diffdest", &["diffsrc1", "diffsrc2"]).await.unwrap();
+    let count = client
+        .sdiffstore("diffdest", &["diffsrc1", "diffsrc2"])
+        .await
+        .unwrap();
     assert_eq!(count, 1);
 
     let members = client.smembers("diffdest").await.unwrap();
@@ -196,10 +283,25 @@ async fn test_sinterstore() {
     client.del("intersrc2").await.ok();
     client.del("interdest").await.ok();
 
-    client.sadd("intersrc1", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
-    client.sadd("intersrc2", &[Bytes::from("b"), Bytes::from("c"), Bytes::from("d")]).await.unwrap();
+    client
+        .sadd(
+            "intersrc1",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
+    client
+        .sadd(
+            "intersrc2",
+            &[Bytes::from("b"), Bytes::from("c"), Bytes::from("d")],
+        )
+        .await
+        .unwrap();
 
-    let count = client.sinterstore("interdest", &["intersrc1", "intersrc2"]).await.unwrap();
+    let count = client
+        .sinterstore("interdest", &["intersrc1", "intersrc2"])
+        .await
+        .unwrap();
     assert_eq!(count, 2);
 
     let members = client.smembers("interdest").await.unwrap();
@@ -219,10 +321,19 @@ async fn test_sunionstore() {
     client.del("unionsrc2").await.ok();
     client.del("uniondest").await.ok();
 
-    client.sadd("unionsrc1", &[Bytes::from("a"), Bytes::from("b")]).await.unwrap();
-    client.sadd("unionsrc2", &[Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .sadd("unionsrc1", &[Bytes::from("a"), Bytes::from("b")])
+        .await
+        .unwrap();
+    client
+        .sadd("unionsrc2", &[Bytes::from("b"), Bytes::from("c")])
+        .await
+        .unwrap();
 
-    let count = client.sunionstore("uniondest", &["unionsrc1", "unionsrc2"]).await.unwrap();
+    let count = client
+        .sunionstore("uniondest", &["unionsrc1", "unionsrc2"])
+        .await
+        .unwrap();
     assert_eq!(count, 3);
 
     let members = client.smembers("uniondest").await.unwrap();

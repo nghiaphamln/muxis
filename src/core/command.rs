@@ -573,6 +573,160 @@ pub fn sunionstore(destination: String, keys: Vec<String>) -> Cmd {
     cmd
 }
 
+/// Creates a ZADD command.
+#[inline]
+pub fn zadd(key: String, members: Vec<(f64, Bytes)>) -> Cmd {
+    let mut cmd = Cmd::new("ZADD").arg(key);
+    for (score, member) in members {
+        cmd = cmd.arg(score.to_string()).arg(member);
+    }
+    cmd
+}
+
+/// Creates a ZREM command.
+#[inline]
+pub fn zrem(key: String, members: Vec<Bytes>) -> Cmd {
+    let mut cmd = Cmd::new("ZREM").arg(key);
+    for member in members {
+        cmd = cmd.arg(member);
+    }
+    cmd
+}
+
+/// Creates a ZRANGE command.
+#[inline]
+pub fn zrange(key: impl Into<Bytes>, start: i64, stop: i64) -> Cmd {
+    Cmd::new("ZRANGE")
+        .arg(key)
+        .arg(start.to_string())
+        .arg(stop.to_string())
+}
+
+/// Creates a ZRANGEBYSCORE command.
+#[inline]
+pub fn zrangebyscore(key: impl Into<Bytes>, min: impl Into<Bytes>, max: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZRANGEBYSCORE").arg(key).arg(min).arg(max)
+}
+
+/// Creates a ZRANK command.
+#[inline]
+pub fn zrank(key: impl Into<Bytes>, member: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZRANK").arg(key).arg(member)
+}
+
+/// Creates a ZSCORE command.
+#[inline]
+pub fn zscore(key: impl Into<Bytes>, member: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZSCORE").arg(key).arg(member)
+}
+
+/// Creates a ZCARD command.
+#[inline]
+pub fn zcard(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZCARD").arg(key)
+}
+
+/// Creates a ZCOUNT command.
+#[inline]
+pub fn zcount(key: impl Into<Bytes>, min: impl Into<Bytes>, max: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZCOUNT").arg(key).arg(min).arg(max)
+}
+
+/// Creates a ZINCRBY command.
+#[inline]
+pub fn zincrby(key: impl Into<Bytes>, increment: f64, member: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZINCRBY")
+        .arg(key)
+        .arg(increment.to_string())
+        .arg(member)
+}
+
+/// Creates a ZREVRANGE command.
+#[inline]
+pub fn zrevrange(key: impl Into<Bytes>, start: i64, stop: i64) -> Cmd {
+    Cmd::new("ZREVRANGE")
+        .arg(key)
+        .arg(start.to_string())
+        .arg(stop.to_string())
+}
+
+/// Creates a ZREVRANK command.
+#[inline]
+pub fn zrevrank(key: impl Into<Bytes>, member: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZREVRANK").arg(key).arg(member)
+}
+
+/// Creates a ZREMRANGEBYRANK command.
+#[inline]
+pub fn zremrangebyrank(key: impl Into<Bytes>, start: i64, stop: i64) -> Cmd {
+    Cmd::new("ZREMRANGEBYRANK")
+        .arg(key)
+        .arg(start.to_string())
+        .arg(stop.to_string())
+}
+
+/// Creates a ZREMRANGEBYSCORE command.
+#[inline]
+pub fn zremrangebyscore(
+    key: impl Into<Bytes>,
+    min: impl Into<Bytes>,
+    max: impl Into<Bytes>,
+) -> Cmd {
+    Cmd::new("ZREMRANGEBYSCORE").arg(key).arg(min).arg(max)
+}
+
+/// Creates a ZPOPMIN command.
+#[inline]
+pub fn zpopmin(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZPOPMIN").arg(key)
+}
+
+/// Creates a ZPOPMAX command.
+#[inline]
+pub fn zpopmax(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZPOPMAX").arg(key)
+}
+
+/// Creates a BZPOPMIN command.
+#[inline]
+pub fn bzpopmin(keys: Vec<String>, timeout: u64) -> Cmd {
+    let mut cmd = Cmd::new("BZPOPMIN");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd = cmd.arg(timeout.to_string());
+    cmd
+}
+
+/// Creates a BZPOPMAX command.
+#[inline]
+pub fn bzpopmax(keys: Vec<String>, timeout: u64) -> Cmd {
+    let mut cmd = Cmd::new("BZPOPMAX");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd = cmd.arg(timeout.to_string());
+    cmd
+}
+
+/// Creates a ZLEXCOUNT command.
+#[inline]
+pub fn zlexcount(key: impl Into<Bytes>, min: impl Into<Bytes>, max: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZLEXCOUNT").arg(key).arg(min).arg(max)
+}
+
+/// Creates a ZRANGEBYLEX command.
+#[inline]
+pub fn zrangebylex(key: impl Into<Bytes>, min: impl Into<Bytes>, max: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZRANGEBYLEX").arg(key).arg(min).arg(max)
+}
+
+/// Creates a ZREMRANGEBYLEX command.
+#[inline]
+pub fn zremrangebylex(key: impl Into<Bytes>, min: impl Into<Bytes>, max: impl Into<Bytes>) -> Cmd {
+    Cmd::new("ZREMRANGEBYLEX").arg(key).arg(min).arg(max)
+}
+
 /// Parses a frame as a Redis response.
 #[inline]
 pub fn parse_frame_response(frame: Frame) -> Result<Frame, crate::Error> {
@@ -880,6 +1034,94 @@ pub fn frame_to_blocking_pop(frame: Frame) -> Result<Option<(String, Bytes)>, cr
         }),
         _ => Err(crate::Error::Protocol {
             message: "unexpected frame type for blocking pop".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame to an optional i64 (for ZRANK/ZREVRANK).
+#[inline]
+pub fn frame_to_optional_int(frame: Frame) -> Result<Option<i64>, crate::Error> {
+    match frame {
+        Frame::Null => Ok(None),
+        Frame::Integer(i) => Ok(Some(i)),
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "unexpected frame type for optional int".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame to an optional float (for ZSCORE).
+#[inline]
+pub fn frame_to_optional_float(frame: Frame) -> Result<Option<f64>, crate::Error> {
+    match frame {
+        Frame::Null => Ok(None),
+        Frame::BulkString(None) => Ok(None),
+        _ => frame_to_float(frame).map(Some),
+    }
+}
+
+/// Converts a frame to a sorted set member with score (for ZPOPMIN/ZPOPMAX).
+#[inline]
+pub fn frame_to_zpop_result(frame: Frame) -> Result<Option<(String, f64)>, crate::Error> {
+    match frame {
+        Frame::Null => Ok(None),
+        Frame::Array(mut arr) => {
+            if arr.is_empty() {
+                return Ok(None);
+            }
+            if arr.len() != 2 {
+                return Err(crate::Error::Protocol {
+                    message: "ZPOP response must have 2 elements".to_string(),
+                });
+            }
+
+            let score_frame = arr.pop().unwrap();
+            let member_frame = arr.pop().unwrap();
+
+            let member = frame_to_string(member_frame)?;
+            let score = frame_to_float(score_frame)?;
+
+            Ok(Some((member, score)))
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "unexpected frame type for ZPOP".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame to a BZPOPMIN/BZPOPMAX response (key, member, score).
+#[inline]
+pub fn frame_to_bzpop_result(frame: Frame) -> Result<Option<(String, String, f64)>, crate::Error> {
+    match frame {
+        Frame::Null => Ok(None),
+        Frame::Array(mut arr) => {
+            if arr.len() != 3 {
+                return Err(crate::Error::Protocol {
+                    message: "BZPOP response must have 3 elements".to_string(),
+                });
+            }
+
+            let score_frame = arr.pop().unwrap();
+            let member_frame = arr.pop().unwrap();
+            let key_frame = arr.pop().unwrap();
+
+            let key = frame_to_string(key_frame)?;
+            let member = frame_to_string(member_frame)?;
+            let score = frame_to_float(score_frame)?;
+
+            Ok(Some((key, member, score)))
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "unexpected frame type for BZPOP".to_string(),
         }),
     }
 }
@@ -1582,5 +1824,202 @@ mod tests {
                 Frame::BulkString(Some("key1".into()))
             ])
         );
+    }
+
+    #[test]
+    fn test_zadd_cmd() {
+        let cmd = zadd(
+            "key".to_string(),
+            vec![(1.0, Bytes::from("a")), (2.5, Bytes::from("b"))],
+        );
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZADD".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("1".into())),
+                Frame::BulkString(Some("a".into())),
+                Frame::BulkString(Some("2.5".into())),
+                Frame::BulkString(Some("b".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zrem_cmd() {
+        let cmd = zrem("key".to_string(), vec![Bytes::from("a"), Bytes::from("b")]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZREM".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("a".into())),
+                Frame::BulkString(Some("b".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zrange_cmd() {
+        let cmd = zrange("key", 0, 10);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZRANGE".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("0".into())),
+                Frame::BulkString(Some("10".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zrangebyscore_cmd() {
+        let cmd = zrangebyscore("key", "-inf", "+inf");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZRANGEBYSCORE".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("-inf".into())),
+                Frame::BulkString(Some("+inf".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zrank_cmd() {
+        let cmd = zrank("key", "member");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZRANK".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("member".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zscore_cmd() {
+        let cmd = zscore("key", "member");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZSCORE".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("member".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zcard_cmd() {
+        let cmd = zcard("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZCARD".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zcount_cmd() {
+        let cmd = zcount("key", "0", "100");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZCOUNT".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("0".into())),
+                Frame::BulkString(Some("100".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zincrby_cmd() {
+        let cmd = zincrby("key", 2.5, "member");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZINCRBY".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("2.5".into())),
+                Frame::BulkString(Some("member".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_zpopmin_cmd() {
+        let cmd = zpopmin("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("ZPOPMIN".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_frame_to_optional_int() {
+        let frame = Frame::Integer(42);
+        let result = frame_to_optional_int(frame).unwrap();
+        assert_eq!(result, Some(42));
+
+        let null_frame = Frame::Null;
+        let null_result = frame_to_optional_int(null_frame).unwrap();
+        assert_eq!(null_result, None);
+    }
+
+    #[test]
+    fn test_frame_to_optional_float() {
+        let frame = Frame::BulkString(Some(Bytes::from("2.5")));
+        let result = frame_to_optional_float(frame).unwrap();
+        assert_eq!(result, Some(2.5));
+
+        let null_frame = Frame::Null;
+        let null_result = frame_to_optional_float(null_frame).unwrap();
+        assert_eq!(null_result, None);
+    }
+
+    #[test]
+    fn test_frame_to_zpop_result() {
+        let frame = Frame::Array(vec![
+            Frame::BulkString(Some("member".into())),
+            Frame::BulkString(Some("1.5".into())),
+        ]);
+        let result = frame_to_zpop_result(frame).unwrap();
+        assert!(result.is_some());
+        let (member, score) = result.unwrap();
+        assert_eq!(member, "member");
+        assert_eq!(score, 1.5);
+
+        let null_frame = Frame::Null;
+        let null_result = frame_to_zpop_result(null_frame).unwrap();
+        assert_eq!(null_result, None);
+    }
+
+    #[test]
+    fn test_frame_to_bzpop_result() {
+        let frame = Frame::Array(vec![
+            Frame::BulkString(Some("key".into())),
+            Frame::BulkString(Some("member".into())),
+            Frame::BulkString(Some("2.0".into())),
+        ]);
+        let result = frame_to_bzpop_result(frame).unwrap();
+        assert!(result.is_some());
+        let (key, member, score) = result.unwrap();
+        assert_eq!(key, "key");
+        assert_eq!(member, "member");
+        assert_eq!(score, 2.0);
+
+        let null_frame = Frame::Null;
+        let null_result = frame_to_bzpop_result(null_frame).unwrap();
+        assert_eq!(null_result, None);
     }
 }

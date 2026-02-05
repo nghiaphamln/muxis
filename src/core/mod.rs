@@ -1906,6 +1906,158 @@ impl Client {
         let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_int(frame)
     }
+
+    /// Adds members with scores to a sorted set (ZADD).
+    pub async fn zadd(&mut self, key: &str, members: &[(f64, Bytes)]) -> Result<i64> {
+        let members_vec = members.to_vec();
+        let cmd = command::zadd(key.to_string(), members_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Removes members from a sorted set (ZREM).
+    pub async fn zrem(&mut self, key: &str, members: &[Bytes]) -> Result<i64> {
+        let members_vec = members.to_vec();
+        let cmd = command::zrem(key.to_string(), members_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Returns a range of members from a sorted set by index (ZRANGE).
+    pub async fn zrange(&mut self, key: &str, start: i64, stop: i64) -> Result<Vec<String>> {
+        let cmd = command::zrange(key.to_string(), start, stop);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Returns members in a sorted set within a score range (ZRANGEBYSCORE).
+    pub async fn zrangebyscore(&mut self, key: &str, min: &str, max: &str) -> Result<Vec<String>> {
+        let cmd = command::zrangebyscore(key.to_string(), min.to_string(), max.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Returns the rank of a member in a sorted set (ZRANK).
+    pub async fn zrank(&mut self, key: &str, member: Bytes) -> Result<Option<i64>> {
+        let cmd = command::zrank(key.to_string(), member);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_optional_int(frame)
+    }
+
+    /// Returns the score of a member in a sorted set (ZSCORE).
+    pub async fn zscore(&mut self, key: &str, member: Bytes) -> Result<Option<f64>> {
+        let cmd = command::zscore(key.to_string(), member);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_optional_float(frame)
+    }
+
+    /// Returns the cardinality of a sorted set (ZCARD).
+    pub async fn zcard(&mut self, key: &str) -> Result<i64> {
+        let cmd = command::zcard(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Returns the count of members within a score range (ZCOUNT).
+    pub async fn zcount(&mut self, key: &str, min: &str, max: &str) -> Result<i64> {
+        let cmd = command::zcount(key.to_string(), min.to_string(), max.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Increments the score of a member in a sorted set (ZINCRBY).
+    pub async fn zincrby(&mut self, key: &str, increment: f64, member: Bytes) -> Result<f64> {
+        let cmd = command::zincrby(key.to_string(), increment, member);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_float(frame)
+    }
+
+    /// Returns a range of members in reverse order (ZREVRANGE).
+    pub async fn zrevrange(&mut self, key: &str, start: i64, stop: i64) -> Result<Vec<String>> {
+        let cmd = command::zrevrange(key.to_string(), start, stop);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Returns the reverse rank of a member (ZREVRANK).
+    pub async fn zrevrank(&mut self, key: &str, member: Bytes) -> Result<Option<i64>> {
+        let cmd = command::zrevrank(key.to_string(), member);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_optional_int(frame)
+    }
+
+    /// Removes members by rank range (ZREMRANGEBYRANK).
+    pub async fn zremrangebyrank(&mut self, key: &str, start: i64, stop: i64) -> Result<i64> {
+        let cmd = command::zremrangebyrank(key.to_string(), start, stop);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Removes members by score range (ZREMRANGEBYSCORE).
+    pub async fn zremrangebyscore(&mut self, key: &str, min: &str, max: &str) -> Result<i64> {
+        let cmd = command::zremrangebyscore(key.to_string(), min.to_string(), max.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Removes and returns the member with the lowest score (ZPOPMIN).
+    pub async fn zpopmin(&mut self, key: &str) -> Result<Option<(String, f64)>> {
+        let cmd = command::zpopmin(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_zpop_result(frame)
+    }
+
+    /// Removes and returns the member with the highest score (ZPOPMAX).
+    pub async fn zpopmax(&mut self, key: &str) -> Result<Option<(String, f64)>> {
+        let cmd = command::zpopmax(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_zpop_result(frame)
+    }
+
+    /// Blocking ZPOPMIN (BZPOPMIN).
+    pub async fn bzpopmin(
+        &mut self,
+        keys: &[&str],
+        timeout: u64,
+    ) -> Result<Option<(String, String, f64)>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::bzpopmin(keys_vec, timeout);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bzpop_result(frame)
+    }
+
+    /// Blocking ZPOPMAX (BZPOPMAX).
+    pub async fn bzpopmax(
+        &mut self,
+        keys: &[&str],
+        timeout: u64,
+    ) -> Result<Option<(String, String, f64)>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::bzpopmax(keys_vec, timeout);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bzpop_result(frame)
+    }
+
+    /// Returns count of members between lexicographical range (ZLEXCOUNT).
+    pub async fn zlexcount(&mut self, key: &str, min: &str, max: &str) -> Result<i64> {
+        let cmd = command::zlexcount(key.to_string(), min.to_string(), max.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Returns members between lexicographical range (ZRANGEBYLEX).
+    pub async fn zrangebylex(&mut self, key: &str, min: &str, max: &str) -> Result<Vec<String>> {
+        let cmd = command::zrangebylex(key.to_string(), min.to_string(), max.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Removes members between lexicographical range (ZREMRANGEBYLEX).
+    pub async fn zremrangebylex(&mut self, key: &str, min: &str, max: &str) -> Result<i64> {
+        let cmd = command::zremrangebylex(key.to_string(), min.to_string(), max.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
 }
 
 #[cfg(test)]
