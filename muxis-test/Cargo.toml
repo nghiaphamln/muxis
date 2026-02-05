@@ -12,4 +12,4 @@ muxis-proto = { path = "../muxis-proto" }
 muxis-core = { path = "../muxis-core" }
 muxis-cluster = { path = "../muxis-cluster" }
 muxis-client = { path = "../muxis-client" }
-tokio = { version = "1.40", features = ["test-util"] }
+tokio = { version = "1.49", features = ["test-util"] }

@@ -10,6 +10,6 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 muxis-core = { path = "../muxis-core" }
 muxis-proto = { path = "../muxis-proto" }
-tokio = { version = "1.40", features = ["full"] }
-tracing = "0.1"
-thiserror = "2"
+tokio = { version = "1.49", features = ["full"] }
+tracing = "0.1.44"
+thiserror = "2.0"
