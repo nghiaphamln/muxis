@@ -1,6 +1,6 @@
 use bytes::{BufMut, Bytes, BytesMut};
 
-use crate::frame::Frame;
+use crate::proto::frame::Frame;
 
 /// A RESP encoder that converts [`Frame`] types to bytes.
 ///
@@ -10,8 +10,8 @@ use crate::frame::Frame;
 /// # Example
 ///
 /// ```
-/// use muxis_proto::codec::Encoder;
-/// use muxis_proto::frame::Frame;
+/// use muxis::proto::codec::Encoder;
+/// use muxis::proto::frame::Frame;
 ///
 /// let mut encoder = Encoder::new();
 /// encoder.encode(&Frame::SimpleString(b"OK".to_vec()));

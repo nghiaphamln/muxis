@@ -1,21 +1,21 @@
-//! # Muxis Client
+//! # Muxis
 //!
 //! High-performance Redis client library for Rust with multiplexing,
 //! automatic standalone/cluster detection, and full feature coverage.
 //!
 //! ## Features
 //!
-//! - `tls` - TLS/SSL support via native-tls
+//! - `tls` - TLS/SSL support
 //! - `resp3` - RESP3 protocol support
 //! - `cluster` - Cluster mode support
 //! - `json` - RedisJSON commands
 //! - `streams` - Redis Streams commands
-//! - `tracing` - OpenTelemetry tracing support
+//! - `tracing` - Observability
 //!
 //! ## Example
 //!
 //! ```no_run
-//! use muxis_client::Client;
+//! use muxis::Client;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,12 +24,18 @@
 //!     Ok(())
 //! }
 //! ```
-//!
-//! ## Crate Architecture
-//!
-//! This crate re-exports types from the following crates:
-//! - [`muxis_core`] - Core connection handling
-//! - [`muxis_cluster`] - Cluster support
-//! - [`muxis_proto`] - Protocol codec
 
-pub use muxis_core::Client;
+#![warn(missing_docs)]
+
+pub mod core;
+pub mod proto;
+
+#[cfg(feature = "cluster")]
+pub mod cluster;
+
+#[cfg(feature = "test-utils")]
+pub mod testing;
+
+// Re-export high-level client types for convenience
+pub use crate::core::builder::ClientBuilder;
+pub use crate::core::{Client, Error, Result};

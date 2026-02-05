@@ -16,7 +16,7 @@
 use bytes::Bytes;
 use std::time::Duration;
 
-pub use muxis_proto::error::{Error, Result};
+pub use crate::proto::error::{Error, Result};
 
 /// Client builder configuration.
 pub mod builder;
@@ -41,7 +41,7 @@ cfg_if::cfg_if! {
 /// # Example
 ///
 /// ```no_run
-/// use muxis_core::Client;
+/// use muxis::core::Client;
 /// use bytes::Bytes;
 ///
 /// #[tokio::main]
@@ -100,7 +100,7 @@ impl Client {
                 .await
                 .map_err(|e| Error::Io { source: e })?;
             let resp = connection.read_frame().await?;
-            if let muxis_proto::frame::Frame::Error(_) = resp {
+            if let crate::proto::frame::Frame::Error(_) = resp {
                 return Err(Error::Auth);
             }
         }

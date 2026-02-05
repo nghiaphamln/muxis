@@ -7,4 +7,5 @@
 //!
 //! This crate is intended for internal use only.
 
+/// Test harness.
 pub mod harness;

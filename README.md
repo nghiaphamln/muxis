@@ -4,7 +4,7 @@ A high-performance Redis client for Rust with multiplexing, auto standalone/clus
 
 ## Features
 
-### Current (v0.2.0)
+### Current (v0.3.0)
 
 - **Complete RESP2 Protocol**: Full implementation of Redis Serialization Protocol version 2
 - **Multiplexed Connections**: Handle multiple concurrent requests over a single TCP connection
@@ -35,24 +35,22 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-muxis = "0.2.0"
+muxis = "0.3"
 ```
 
 ## Quick Start
 
 ```rust
-use muxis::Client;
+use bytes::Bytes;
+use muxis::{Client, Result};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     // Connect to Redis
-    let client = Client::builder()
-        .address("127.0.0.1:6379")
-        .build()
-        .await?;
+    let mut client = Client::connect("redis://127.0.0.1:6379").await?;
 
     // Set a value
-    client.set("mykey", "Hello, Muxis!").await?;
+    client.set("mykey", Bytes::from("Hello, Muxis!")).await?;
 
     // Get a value
     if let Some(value) = client.get("mykey").await? {
@@ -63,27 +61,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let count = client.incr("counter").await?;
     println!("Counter: {}", count);
 
-    // Delete a key
-    let deleted = client.del(&["mykey"]).await?;
-    println!("Deleted {} keys", deleted);
+    // Delete keys
+    client.del("mykey").await?;
+    client.del("counter").await?;
 
     Ok(())
 }
 ```
+
+More examples available in the `examples/` directory:
+- `basic.rs` - Basic Redis operations
+- `builder.rs` - Using ClientBuilder for configuration
+- `pipeline.rs` - Multiple commands in sequence
+- `auth.rs` - Authentication and database selection
 
 ## Usage Examples
 
 ### Connection Configuration
 
 ```rust
-use muxis::Client;
-use std::time::Duration;
+use muxis::ClientBuilder;
 
-let client = Client::builder()
-    .address("127.0.0.1:6379")
-    .connect_timeout(Duration::from_secs(5))
-    .io_timeout(Duration::from_secs(3))
-    .client_name("my-app")
+let mut client = ClientBuilder::new()
+    .address("redis://127.0.0.1:6379")
     .database(2)
     .build()
     .await?;
@@ -92,22 +92,22 @@ let client = Client::builder()
 ### Basic Commands
 
 ```rust
+use bytes::Bytes;
+
 // String operations
-client.set("user:1:name", "Alice").await?;
+client.set("user:1:name", Bytes::from("Alice")).await?;
 let name = client.get("user:1:name").await?;
 
 // Atomic operations
 let views = client.incr("page:views").await?;
 let likes = client.decr("post:dislikes").await?;
 
-// Multiple key deletion
-let deleted = client.del(&["key1", "key2", "key3"]).await?;
+// Key deletion
+client.del("key1").await?;
+client.del("key2").await?;
 
 // Ping server
 let pong = client.ping().await?;
-
-// Echo message
-let echo = client.echo("Hello").await?;
 ```
 
 ### Multiplexed Concurrent Requests
@@ -134,29 +134,25 @@ for handle in handles {
 ### Error Handling
 
 ```rust
-use muxis::proto::{Error, DecodeError};
+use muxis::Error;
 
 match client.get("mykey").await {
     Ok(Some(value)) => println!("Value: {:?}", value),
     Ok(None) => println!("Key not found"),
-    Err(Error::Decode(DecodeError::Incomplete)) => {
-        println!("Connection interrupted");
-    }
     Err(e) => println!("Error: {}", e),
 }
 ```
 
 ## Architecture
 
-Muxis is organized as a multi-crate workspace:
+Muxis is organized as a single-crate library with well-defined modules:
 
-### Crates
+### Modules
 
-- **muxis-proto**: RESP protocol codec (encoder/decoder)
-- **muxis-core**: Connection management, multiplexing, and command execution
-- **muxis-client**: Public API and re-exports
-- **muxis-cluster**: Cluster support (planned)
-- **muxis-test**: Test utilities and harnesses
+- **muxis::proto**: RESP protocol codec (encoder/decoder)
+- **muxis::core**: Connection management, multiplexing, and command execution
+- **muxis::cluster**: Cluster support (planned, feature-gated)
+- **muxis::testing**: Test utilities (feature-gated with `test-utils`)
 
 ### Multiplexing Model
 
@@ -284,7 +280,13 @@ See [AGENTS.md](AGENTS.md) for detailed development guidelines.
 
 ## Project Status
 
-Muxis is in active development. Version 0.2.0 provides a solid foundation with RESP2 protocol support and multiplexed connections for standalone Redis servers.
+Muxis is in active development. Version 0.3.0 provides a solid foundation with RESP2 protocol support and multiplexed connections for standalone Redis servers.
+
+**v0.3.0 Changes:**
+- Refactored from multi-crate workspace to single-crate architecture
+- Simplified public API with cleaner imports
+- Added comprehensive examples in `examples/` directory
+- Improved module organization and documentation
 
 Current status:
 - Phase 0: Repository scaffolding - COMPLETE

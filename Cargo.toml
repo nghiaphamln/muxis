@@ -1,21 +1,38 @@
-[workspace]
-resolver = "2"
-members = [
-    "muxis-proto",
-    "muxis-core",
-    "muxis-cluster",
-    "muxis-client",
-    "muxis-test",
-]
+[package]
+name = "muxis"
+version = "0.3.0"
+edition = "2021"
+authors = ["Muxis Contributors"]
+description = "High-performance Redis client for Rust with multiplexing"
+repository = "https://github.com/nexorion/muxis"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["redis", "database", "async", "multiplexing"]
+categories = ["database", "asynchronous"]
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
+[dependencies]
+bytes = { version = "1.11", features = ["std"] }
+thiserror = "2.0"
+tokio = { version = "1.49", features = ["full"] }
+tracing = "0.1.44"
+url = "2.5"
+cfg-if = "1.0"
+futures = "0.3"
 
-[profile.dev]
-opt-level = 0
-debug = true
+# Optional dependencies
+native-tls = { version = "0.2", optional = true }
+tokio-native-tls = { version = "0.3", optional = true }
+serde = { version = "1.0", optional = true, features = ["derive"] }
+serde_json = { version = "1.0", optional = true }
 
-[profile.bench]
-inherits = "release"
+[dev-dependencies]
+tokio = { version = "1.49", features = ["full", "test-util"] }
+
+[features]
+default = []
+cluster = []
+tls = ["native-tls", "tokio-native-tls"]
+resp3 = []
+json = ["serde", "serde_json"]
+streams = []
+test-utils = []
