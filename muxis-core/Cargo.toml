@@ -1,0 +1,15 @@
+[package]
+name = "muxis-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Muxis Contributors"]
+description = "Core connection handling for Muxis Redis client"
+repository = "https://github.com/nexorion/muxis"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+muxis-proto = { path = "../muxis-proto" }
+tokio = { version = "1.40", features = ["full"] }
+tracing = "0.1"
+thiserror = "2"
+bytes = "1"

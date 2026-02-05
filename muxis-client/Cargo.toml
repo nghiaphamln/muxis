@@ -1,0 +1,29 @@
+[package]
+name = "muxis-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["Muxis Contributors"]
+description = "High-performance Redis client with multiplexing"
+repository = "https://github.com/nexorion/muxis"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = []
+tls = ["tokio-tls"]
+resp3 = []
+cluster = []
+json = ["serde", "serde_json"]
+streams = []
+tracing = []
+
+[dependencies]
+muxis-core = { path = "../muxis-core" }
+muxis-cluster = { path = "../muxis-cluster" }
+muxis-proto = { path = "../muxis-proto" }
+tokio = { version = "1.40", features = ["full"] }
+tracing = "0.1"
+bytes = "1"
+serde = { version = "1", optional = true }
+serde_json = { version = "1", optional = true }
+tokio-tls = { version = "0.3", optional = true }
+native-tls = { version = "=0.2.11", optional = true }
