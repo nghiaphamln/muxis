@@ -25,13 +25,14 @@
 //! ```no_run
 //! # #[cfg(feature = "cluster")]
 //! # async fn example() -> muxis::Result<()> {
-//! use muxis::ClusterClient;
+//! use muxis::cluster::ClusterClient;
+//! use bytes::Bytes;
 //!
-//! // Connect to Redis Cluster
-//! let mut client = ClusterClient::connect(&["127.0.0.1:7000"]).await?;
+//! // Connect to Redis Cluster (comma-separated seed nodes)
+//! let client = ClusterClient::connect("127.0.0.1:7000,127.0.0.1:7001").await?;
 //!
 //! // Commands are automatically routed to correct node
-//! client.set("key", "value").await?;
+//! client.set("key", Bytes::from("value")).await?;
 //! let value = client.get("key").await?;
 //! # Ok(())
 //! # }
