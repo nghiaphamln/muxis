@@ -15,8 +15,8 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 ///
 /// # Example
 ///
-/// ```ignore
-/// use muxis_core::Connection;
+/// ```no_run
+/// use muxis_core::connection::Connection;
 /// use tokio::net::TcpStream;
 ///
 /// #[tokio::main]
@@ -25,7 +25,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 ///     let mut conn = Connection::new(stream);
 ///
 ///     // Write a PING command
-///     use muxis_proto::Frame;
+///     use muxis_proto::frame::Frame;
 ///     let cmd = Frame::Array(vec![Frame::BulkString(Some("PING".into()))]);
 ///     conn.write_frame(&cmd).await?;
 ///

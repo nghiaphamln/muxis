@@ -6,15 +6,19 @@ use crate::{Client, Error};
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use muxis_core::ClientBuilder;
+/// ```no_run
+/// use muxis_core::builder::ClientBuilder;
 ///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let client = ClientBuilder::new()
 ///     .address("redis://localhost:6379")
 ///     .password("secret")
 ///     .database(0)
 ///     .build()
 ///     .await?;
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, Default)]
 pub struct ClientBuilder {

@@ -14,12 +14,12 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
+//! ```no_run
 //! use muxis_client::Client;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let client = Client::connect("redis://localhost:6379").await?;
+//!     let mut client = Client::connect("redis://localhost:6379").await?;
 //!     let _ = client.ping().await?;
 //!     Ok(())
 //! }

@@ -33,14 +33,15 @@ cfg_if::cfg_if! {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```no_run
 /// use muxis_core::Client;
+/// use bytes::Bytes;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut client = Client::connect("redis://localhost:6379").await?;
-///     client.set("key", "value").await?;
-///     let value: String = client.get("key").await?.unwrap();
+///     client.set("key", Bytes::from("value")).await?;
+///     let value: Bytes = client.get("key").await?.unwrap();
 ///     Ok(())
 /// }
 /// ```

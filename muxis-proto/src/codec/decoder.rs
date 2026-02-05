@@ -12,13 +12,14 @@ const DEFAULT_MAX_FRAME_SIZE: usize = 512 * 1024 * 1024; // 512 MB default
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use muxis_proto::codec::Decoder;
-/// use muxis_proto::Frame;
+/// use muxis_proto::frame::Frame;
 ///
 /// let mut decoder = Decoder::new();
 /// decoder.append(b"+OK\r\n");
 /// let frame = decoder.decode().unwrap().unwrap();
+/// assert_eq!(frame, Frame::SimpleString(b"OK".to_vec()));
 /// ```
 #[derive(Debug)]
 pub struct Decoder {

@@ -9,13 +9,14 @@ use crate::frame::Frame;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
 /// use muxis_proto::codec::Encoder;
-/// use muxis_proto::Frame;
+/// use muxis_proto::frame::Frame;
 ///
 /// let mut encoder = Encoder::new();
 /// encoder.encode(&Frame::SimpleString(b"OK".to_vec()));
 /// let data = encoder.finish();
+/// assert!(!data.is_empty());
 /// ```
 pub struct Encoder {
     buf: BytesMut,
