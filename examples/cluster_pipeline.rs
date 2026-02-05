@@ -195,7 +195,7 @@ async fn main() -> muxis::Result<()> {
     let all_keys: Vec<_> = user_keys.iter()
         .map(|(k, _)| *k)
         .chain(test_keys.iter().map(|(k, _)| *k))
-        .chain(mixed_keys.iter().map(|k| *k))
+        .chain(mixed_keys.iter().copied())
         .collect();
     
     let mut del_futures = vec![];

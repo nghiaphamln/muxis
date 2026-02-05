@@ -280,12 +280,11 @@ async fn stress_test_sustained_load() {
                 let key = format!("stress:sustained:{}:{}", worker_id, local_ops);
                 let value = Bytes::from(format!("value_{}", local_ops));
                 
-                if let Ok(()) = client_clone.set(&key, value).await {
-                    if let Ok(_) = client_clone.get(&key).await {
-                        if let Ok(_) = client_clone.del(&key).await {
-                            local_ops += 3; // SET + GET + DEL
-                        }
-                    }
+                if client_clone.set(&key, value).await.is_ok()
+                    && client_clone.get(&key).await.is_ok()
+                    && client_clone.del(&key).await.is_ok()
+                {
+                    local_ops += 3; // SET + GET + DEL
                 }
             }
             
