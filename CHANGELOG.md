@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 5: Cluster Resilience (Complete)
+
+Production-grade resilience features for handling node failures, network issues, and topology changes during Redis Cluster operations.
+
+#### Added
+
+**MOVED Storm Detection**
+- `MovedStormTracker` struct for detecting rapid MOVED redirects
+- Configurable threshold (10 redirects per 1-second window)
+- Automatic topology refresh throttling with 500ms cooldown
+- Prevents excessive refresh operations during slot migrations
+- 6 unit tests for storm detection, window reset, and cooldown logic
+
+**IO Error Retry with Exponential Backoff**
+- Automatic retry on connection failures (max 3 retries)
+- Exponential backoff delays: 100ms, 200ms, 400ms
+- Integration with topology refresh on IO errors
+- Marks failed connections as unhealthy in pool
+- Warning logs for retry attempts and failures
+- 2 unit tests for retry logic and backoff calculation
+
+**Node Failure Handling**
+- Automatic detection of connection failures via IO errors
+- Integration with connection pool health tracking
+- Automatic topology refresh when nodes become unreachable
+- Connection pool filters out unhealthy connections
+- Seamless failover to new primary after topology refresh
+
+**Enhanced Error Handling**
+- `MAX_RETRIES_ON_IO` constant (default: 3)
+- `RETRY_DELAY_MS` constant (default: 100ms base)
+- `MOVED_STORM_THRESHOLD` constant (default: 10)
+- `MOVED_STORM_WINDOW` constant (default: 1 second)
+- `REFRESH_COOLDOWN` constant (default: 500ms)
+
+**Documentation**
+- Enhanced `execute_with_redirects()` documentation with resilience features
+- MovedStormTracker implementation with detailed comments
+- Retry policy documented: All commands are retried on IO errors (limitation noted)
+
+#### Changed
+
+- `ClusterClient` now includes `storm_tracker: Arc<MovedStormTracker>` field
+- `execute_with_redirects()` rewritten with IO retry loop and storm detection
+- `refresh_topology()` now resets storm tracker on successful refresh
+- Imports updated to include `AtomicUsize`, `Ordering`, `Duration`, `Instant`, `Mutex`
+
 ### Phase 4: Cluster Support (Complete)
 
 Production-ready Redis Cluster support with automatic redirect handling, slot-based routing, topology management, and connection pooling.
