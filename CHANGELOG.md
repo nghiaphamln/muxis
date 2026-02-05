@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-05
+
+### Added
+
+#### Multiplexing Stable (Phase 2)
+
+- **Robust Multiplexing**: Actor-based architecture with independent Reader/Writer tasks
+- **Deadlock Prevention**: Split I/O design removing Mutex contention
+- **Flow Control**: Bounded channels with configurable backpressure (default 1024)
+- **Observability**: Tracing instrumentation for all requests
+- **Stress Testing**: Verified with 1000+ concurrent requests
+
 ## [0.1.0] - 2026-02-05
 
 ### Added

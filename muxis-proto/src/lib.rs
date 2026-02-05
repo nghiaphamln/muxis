@@ -13,6 +13,9 @@
 //! - [`error`] - Error types for protocol operations
 //! - [`frame`] - Frame types representing RESP data structures
 
+#![warn(missing_docs)]
+
 pub mod codec;
+/// Error types.
 pub mod error;
 pub mod frame;

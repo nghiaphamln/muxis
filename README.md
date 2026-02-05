@@ -177,8 +177,8 @@ Muxis uses a sophisticated multiplexing architecture to handle concurrent reques
 │  │ (VecDeque)   │         │              │                  │
 │  └──────────────┘         └──────────────┘                  │
 │                                                              │
-│  Each request: RequestId + oneshot response channel          │
-│  RESP ordered replies: FIFO queue matching                   │
+│  Each request: Request sent via bounded channel              │
+│  RESP ordered replies: Strict FIFO queue matching            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -289,7 +289,7 @@ Muxis is in active development. Version 0.1.0 provides a solid foundation with R
 Current status:
 - Phase 0: Repository scaffolding - COMPLETE
 - Phase 1: RESP codec + basic connection - COMPLETE
-- Phase 2: Multiplexing stable - IN PROGRESS
+- Phase 2: Multiplexing stable - COMPLETE
 - Phase 3+: See [ROADMAP.md](ROADMAP.md)
 
 ## Minimum Supported Rust Version (MSRV)

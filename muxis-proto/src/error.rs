@@ -2,37 +2,57 @@ use std::io;
 
 use thiserror::Error;
 
+/// Result type alias for muxis operations.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Errors that can occur when interacting with Redis protocol.
 #[derive(Debug, Error)]
 pub enum Error {
+    /// An IO error occurred.
     #[error("IO error: {source}")]
     Io {
+        /// The underlying IO error.
         #[from]
         source: io::Error,
     },
 
+    /// A protocol error occurred.
     #[error("protocol error: {message}")]
-    Protocol { message: String },
+    Protocol {
+        /// Description of the error.
+        message: String,
+    },
 
+    /// The server returned an error.
     #[error("server error: {message}")]
-    Server { message: String },
+    Server {
+        /// Error message from server.
+        message: String,
+    },
 
+    /// Authentication failed.
     #[error("authentication failed")]
     Auth,
 
+    /// Invalid argument provided.
     #[error("invalid argument: {message}")]
-    InvalidArgument { message: String },
+    InvalidArgument {
+        /// Description of invalid argument.
+        message: String,
+    },
 
+    /// Encoding failed.
     #[error("encode error: {source}")]
     Encode {
+        /// Underlying encode error.
         #[from]
         source: EncodeError,
     },
 
+    /// Decoding failed.
     #[error("decode error: {source}")]
     Decode {
+        /// Underlying decode error.
         #[from]
         source: DecodeError,
     },

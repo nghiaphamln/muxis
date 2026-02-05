@@ -1,189 +1,134 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use tokio::sync::{mpsc, oneshot, Mutex};
-use tokio::task::JoinHandle;
-
-use crate::command::Cmd;
-use crate::connection::Connection;
-use crate::Error;
-use muxis_proto::error::Result;
+use crate::connection::{Connection, ConnectionReader, ConnectionWriter};
 use muxis_proto::frame::Frame;
+use std::fmt;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::sync::{mpsc, oneshot};
+use tracing::{debug, error, instrument};
 
-/// Response to a command.
-pub type Response = Result<Frame>;
+/// A request sent to the multiplexer.
+struct Request {
+    frame: Frame,
+    response_tx: oneshot::Sender<crate::Result<Frame>>,
+}
 
-/// Command ID for correlation between requests and responses.
-type CommandId = u64;
-
-/// Inner state shared between the multiplexed connection and the background task.
+/// A handle to a multiplexed connection.
 ///
-/// This struct holds the pending requests map and the connection, both wrapped
-/// in Arc<Mutex<>> for thread-safe shared access between the main connection
-/// and the background task.
-struct MultiplexedState<S> {
-    pending_requests: Arc<Mutex<HashMap<CommandId, oneshot::Sender<Response>>>>,
-    connection: Arc<Mutex<Connection<S>>>,
+/// This handle is cheap to clone and can be shared across multiple tasks.
+/// It provides a way to send commands to the Redis server concurrently.
+#[derive(Clone)]
+pub struct MultiplexedConnection {
+    sender: mpsc::Sender<Request>,
 }
 
-/// Multiplexed connection that handles concurrent requests to a Redis server.
-pub struct MultiplexedConnection<S> {
-    sender: mpsc::UnboundedSender<(CommandId, Frame, oneshot::Sender<Response>)>,
-    next_id: std::sync::atomic::AtomicU64,
-    _connection_handle: JoinHandle<()>,
-    _phantom: std::marker::PhantomData<S>,
-}
-
-impl<S> MultiplexedConnection<S>
-where
-    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
-{
+impl MultiplexedConnection {
     /// Creates a new multiplexed connection.
-    pub fn new(stream: S) -> Self {
-        let (sender, receiver) = mpsc::unbounded_channel();
-        let connection = Arc::new(Mutex::new(Connection::new(stream)));
-        let pending_requests = Arc::new(Mutex::new(HashMap::new()));
+    ///
+    /// # Arguments
+    ///
+    /// * `connection` - The underlying connection to multiplex.
+    /// * `queue_size` - The maximum number of pending requests.
+    pub fn new<S>(connection: Connection<S>, queue_size: usize) -> Self
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        let (reader, writer) = connection.split();
+        let (request_tx, request_rx) = mpsc::channel(queue_size);
+        // Waiter queue matches request queue size plus a buffer for in-flight IO
+        let (waiter_tx, waiter_rx) = mpsc::channel(queue_size);
 
-        let state = Arc::new(Mutex::new(MultiplexedState {
-            pending_requests: Arc::clone(&pending_requests),
-            connection: Arc::clone(&connection),
-        }));
-
-        let state_clone = Arc::clone(&state);
-        let connection_handle = tokio::spawn(async move {
-            Self::handle_connection(state_clone, receiver).await;
+        // Spawn writer task
+        tokio::spawn(async move {
+            run_writer(writer, request_rx, waiter_tx).await;
         });
 
-        Self {
-            sender,
-            next_id: std::sync::atomic::AtomicU64::new(0),
-            _connection_handle: connection_handle,
-            _phantom: std::marker::PhantomData,
-        }
+        // Spawn reader task
+        tokio::spawn(async move {
+            run_reader(reader, waiter_rx).await;
+        });
+
+        Self { sender: request_tx }
     }
 
-    /// Sends a command and waits for the response.
-    pub async fn send_command(&mut self, cmd: Cmd) -> Result<Frame> {
-        let cmd_frame = cmd.into_frame();
-        let id = self
-            .next_id
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    /// Sends a command to the server and awaits the response.
+    #[instrument(skip(self), level = "debug")]
+    pub async fn send_command(&self, frame: Frame) -> crate::Result<Frame> {
         let (response_tx, response_rx) = oneshot::channel();
+        let request = Request { frame, response_tx };
 
+        // Send request to writer task
         self.sender
-            .send((id, cmd_frame, response_tx))
-            .map_err(|_| Error::Io {
+            .send(request)
+            .await
+            .map_err(|_| crate::Error::Io {
                 source: std::io::Error::new(std::io::ErrorKind::BrokenPipe, "connection closed"),
             })?;
 
-        response_rx.await.map_err(|_| Error::Io {
-            source: std::io::Error::new(std::io::ErrorKind::BrokenPipe, "response channel closed"),
+        // Await response
+        response_rx.await.map_err(|_| crate::Error::Io {
+            source: std::io::Error::new(std::io::ErrorKind::BrokenPipe, "connection closed"),
         })?
     }
+}
 
-    /// Background task that handles sending requests and receiving responses.
-    async fn handle_connection(
-        state: Arc<Mutex<MultiplexedState<S>>>,
-        mut receiver: mpsc::UnboundedReceiver<(CommandId, Frame, oneshot::Sender<Response>)>,
-    ) {
-        loop {
-            tokio::select! {
-                // Handle incoming requests to send
-                request = receiver.recv() => {
-                    match request {
-                        Some((id, frame, response_tx)) => {
-                            // Store the pending request
-                            {
-                                let state_guard = state.lock().await;
-                                state_guard.pending_requests.lock().await.insert(id, response_tx);
-                            }
+impl fmt::Debug for MultiplexedConnection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MultiplexedConnection")
+            .field("sender", &self.sender)
+            .finish()
+    }
+}
 
-                            // Send the frame to the connection
-                            let write_result = {
-                                let state_guard = state.lock().await;
-                                let mut conn_guard = state_guard.connection.lock().await;
-                                conn_guard.write_frame(&frame).await
-                            };
+async fn run_writer<S>(
+    mut writer: ConnectionWriter<S>,
+    mut request_rx: mpsc::Receiver<Request>,
+    waiter_tx: mpsc::Sender<oneshot::Sender<crate::Result<Frame>>>,
+) where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    while let Some(req) = request_rx.recv().await {
+        debug!(?req.frame, "sending frame");
+        // Write frame to socket
+        if let Err(e) = writer.write_frame(&req.frame).await {
+            error!(error = ?e, "failed to write frame");
+            // Failed to write, notify client
+            let _ = req.response_tx.send(Err(crate::Error::Io { source: e }));
+            return; // Stop writer task
+        }
 
-                            if let Err(e) = write_result {
-                                // Remove the pending request and send error
-                                let maybe_sender = {
-                                    let state_guard = state.lock().await;
-                                    let mut pending_guard = state_guard.pending_requests.lock().await;
-                                    pending_guard.remove(&id)
-                                };
-
-                                if let Some(sender) = maybe_sender {
-                                    let _ = sender.send(Err(Error::Io { source: e }));
-                                }
-                                continue;
-                            }
-                        }
-                        None => break, // Channel closed, exit the loop
-                    }
-                }
-                // Handle incoming responses
-                result = async {
-                    let state_guard = state.lock().await;
-                    let mut conn_guard = state_guard.connection.lock().await;
-                    conn_guard.read_frame().await
-                } => {
-                    match result {
-                        Ok(frame) => {
-                            // Get and remove the first pending request to respond to
-                            let maybe_request_data = {
-                                let state_guard = state.lock().await;
-                                let mut pending_guard = state_guard.pending_requests.lock().await;
-                                if let Some((request_id, _sender)) = pending_guard.iter().next() {
-                                    let id = *request_id; // Copy the ID
-                                    let sender_to_return = pending_guard.remove(&id);
-                                    Some((id, sender_to_return))
-                                } else {
-                                    None
-                                }
-                            };
-
-                            if let Some((_request_id, Some(sender))) = maybe_request_data {
-                                let _ = sender.send(Ok(frame));
-                            }
-                        }
-                        Err(e) => {
-                            // Get all pending requests and notify them of the error
-                            let senders = {
-                                let state_guard = state.lock().await;
-                                let mut pending_guard = state_guard.pending_requests.lock().await;
-                                let mut temp_senders = HashMap::new();
-                                std::mem::swap(&mut temp_senders, &mut *pending_guard);
-                                temp_senders
-                            };
-
-                            // Create a new error to send to all pending requests
-                            for (_id, sender) in senders {
-                                let err = match &e {
-                                    Error::Io { source } => Error::Io { source: std::io::Error::new(source.kind(), source.to_string()) },
-                                    Error::Protocol { message } => Error::Protocol { message: message.clone() },
-                                    Error::Server { message } => Error::Server { message: message.clone() },
-                                    Error::Auth => Error::Auth,
-                                    Error::InvalidArgument { message } => Error::InvalidArgument { message: message.clone() },
-                                    Error::Encode { source } => Error::Encode { source: muxis_proto::error::EncodeError::new(std::io::Error::new(std::io::ErrorKind::Other, source.to_string())) },
-                                    Error::Decode { source } => Error::Decode { source: muxis_proto::error::DecodeError::new(std::io::Error::new(std::io::ErrorKind::Other, source.to_string())) },
-                                };
-                                let _ = sender.send(Err(err));
-                            }
-                            break; // Exit the loop as the connection is broken
-                        }
-                    }
-                }
-            }
+        // Send waiter to reader task
+        // If this fails, it means reader task is dead
+        if waiter_tx.send(req.response_tx).await.is_err() {
+            return;
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[tokio::test]
-    async fn test_multiplexed_connection_creation() {
-        // This is a basic test to ensure the structure is sound
-        // A full integration test would require a mock connection
+async fn run_reader<S>(
+    mut reader: ConnectionReader<S>,
+    mut waiter_rx: mpsc::Receiver<oneshot::Sender<crate::Result<Frame>>>,
+) where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    loop {
+        // Wait for the next expected response waiter
+        let tx = match waiter_rx.recv().await {
+            Some(tx) => tx,
+            None => return, // Writer closed, no more requests coming
+        };
+
+        // Read the next frame from the connection
+        match reader.read_frame().await {
+            Ok(frame) => {
+                debug!(?frame, "received frame");
+                let _ = tx.send(Ok(frame));
+            }
+            Err(e) => {
+                error!(error = ?e, "failed to read frame");
+                let _ = tx.send(Err(e));
+                // If we hit a protocol error or IO error, the connection is likely dead.
+                // We should stop the reader.
+                return;
+            }
+        }
     }
 }
