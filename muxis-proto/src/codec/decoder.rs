@@ -54,10 +54,12 @@ impl Decoder {
     /// # Arguments
     ///
     /// * `data` - Raw bytes to append
+    ///
+    /// # Note
+    ///
+    /// Buffer size limits are checked during decode, not append.
+    /// This allows for streaming large frames incrementally.
     pub fn append(&mut self, data: &[u8]) {
-        if self.buf.len() + data.len() > self.max_frame_size {
-            panic!("Buffer size exceeded maximum frame size");
-        }
         self.buf.extend_from_slice(data);
     }
 
@@ -299,5 +301,51 @@ mod tests {
         decoder.append(b"\n");
         let frame = decoder.decode().unwrap().unwrap();
         assert_eq!(frame, Frame::SimpleString(b"OK".to_vec()));
+    }
+
+    #[test]
+    fn test_decoder_with_max_frame_size() {
+        let decoder = Decoder::with_max_frame_size(1024);
+        assert_eq!(decoder.max_frame_size, 1024);
+    }
+
+    #[test]
+    fn test_decoder_bulk_string_exceeds_max_size() {
+        let mut decoder = Decoder::with_max_frame_size(10);
+        // Try to decode a bulk string of 100 bytes (exceeds max of 10)
+        decoder.append(b"$100\r\n");
+        let result = decoder.decode();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("Bulk string length exceeds maximum"));
+    }
+
+    #[test]
+    fn test_decoder_array_exceeds_reasonable_max() {
+        let mut decoder = Decoder::with_max_frame_size(1024);
+        // Try to decode an array with way too many elements
+        let huge_count = (1024 / 16) + 100; // Exceeds reasonable limit
+        let data = format!("*{}\r\n", huge_count);
+        decoder.append(data.as_bytes());
+        let result = decoder.decode();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("Array length exceeds reasonable maximum"));
+    }
+
+    #[test]
+    fn test_decoder_buffer_exceeds_max_on_decode() {
+        let mut decoder = Decoder::with_max_frame_size(10);
+        // Append 20 bytes of data (exceeds max of 10)
+        decoder.append(b"+");
+        let large_data = vec![b'x'; 20];
+        decoder.append(&large_data);
+        decoder.append(b"\r\n");
+        // Should detect overflow during decode
+        let result = decoder.decode();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Buffer size exceeded maximum"));
     }
 }

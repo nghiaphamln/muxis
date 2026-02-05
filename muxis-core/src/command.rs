@@ -9,9 +9,9 @@ use muxis_proto::frame::Frame;
 /// # Example
 ///
 /// ```
-/// use muxis_core::command::{cmd, get, set};
+/// use muxis_core::command::{Cmd, get, set};
 ///
-/// let cmd = cmd("SET").arg("key").arg("value");
+/// let cmd = Cmd::new("SET").arg("key").arg("value");
 /// let get_cmd = get("key");
 /// let set_cmd = set("key", "new_value");
 /// ```

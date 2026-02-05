@@ -159,3 +159,74 @@ impl ClientBuilder {
         Ok(client)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_builder_new() {
+        let builder = ClientBuilder::new();
+        assert!(builder.address.is_none());
+        assert!(builder.password.is_none());
+    }
+
+    #[test]
+    fn test_builder_set_address() {
+        let builder = ClientBuilder::new().address("redis://localhost:6379");
+        assert_eq!(builder.address, Some("redis://localhost:6379".to_string()));
+    }
+
+    #[test]
+    fn test_builder_set_password() {
+        let builder = ClientBuilder::new().password("secret");
+        assert_eq!(builder.password, Some("secret".to_string()));
+    }
+
+    #[test]
+    fn test_builder_set_database() {
+        let builder = ClientBuilder::new().database(5);
+        assert_eq!(builder.database, Some(5));
+    }
+
+    #[test]
+    fn test_builder_set_client_name() {
+        let builder = ClientBuilder::new().client_name("myapp");
+        assert_eq!(builder.client_name, Some("myapp".to_string()));
+    }
+
+    #[test]
+    fn test_builder_set_tls() {
+        let builder = ClientBuilder::new().tls(true);
+        assert!(builder.tls);
+    }
+
+    #[test]
+    fn test_builder_chaining() {
+        let builder = ClientBuilder::new()
+            .address("redis://localhost:6379")
+            .password("secret")
+            .database(0)
+            .client_name("test")
+            .tls(false);
+
+        assert_eq!(builder.address, Some("redis://localhost:6379".to_string()));
+        assert_eq!(builder.password, Some("secret".to_string()));
+        assert_eq!(builder.database, Some(0));
+        assert_eq!(builder.client_name, Some("test".to_string()));
+        assert!(!builder.tls);
+    }
+
+    #[tokio::test]
+    async fn test_builder_build_without_address() {
+        let builder = ClientBuilder::new();
+        let result = builder.build().await;
+        assert!(result.is_err());
+        match result {
+            Err(Error::InvalidArgument { message }) => {
+                assert_eq!(message, "address is required");
+            }
+            _ => panic!("Expected InvalidArgument error"),
+        }
+    }
+}

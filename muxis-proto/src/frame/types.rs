@@ -85,3 +85,66 @@ impl Frame {
         matches!(self, Frame::Null)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_frame_to_string() {
+        let frame = Frame::SimpleString(b"OK".to_vec());
+        assert_eq!(frame.to_string(), Some("OK".to_string()));
+
+        let frame = Frame::Integer(42);
+        assert_eq!(frame.to_string(), Some("42".to_string()));
+
+        let frame = Frame::Null;
+        assert_eq!(frame.to_string(), Some("nil".to_string()));
+    }
+
+    #[test]
+    fn test_frame_to_bulk_string() {
+        let data: Bytes = "hello".into();
+        let frame = Frame::BulkString(Some(data.clone()));
+        assert_eq!(frame.to_bulk_string(), Some(data));
+
+        let frame = Frame::Integer(42);
+        assert_eq!(frame.to_bulk_string(), None);
+    }
+
+    #[test]
+    fn test_frame_to_array() {
+        let frames = vec![Frame::Integer(1), Frame::Integer(2)];
+        let frame = Frame::Array(frames.clone());
+        assert_eq!(frame.to_array(), Some(frames));
+
+        let frame = Frame::Integer(42);
+        assert_eq!(frame.to_array(), None);
+    }
+
+    #[test]
+    fn test_frame_to_int() {
+        let frame = Frame::Integer(42);
+        assert_eq!(frame.to_int(), Some(42));
+
+        let frame = Frame::Null;
+        assert_eq!(frame.to_int(), None);
+    }
+
+    #[test]
+    fn test_frame_is_null() {
+        assert!(Frame::Null.is_null());
+        assert!(!Frame::Integer(42).is_null());
+    }
+
+    #[test]
+    fn test_frame_array_to_string() {
+        let frames = vec![
+            Frame::Integer(1),
+            Frame::SimpleString(b"test".to_vec()),
+            Frame::Integer(3),
+        ];
+        let frame = Frame::Array(frames);
+        assert_eq!(frame.to_string(), Some("[1, test, 3]".to_string()));
+    }
+}

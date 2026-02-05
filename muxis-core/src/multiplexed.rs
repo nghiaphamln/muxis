@@ -17,6 +17,10 @@ pub type Response = Result<Frame>;
 type CommandId = u64;
 
 /// Inner state shared between the multiplexed connection and the background task.
+///
+/// This struct holds the pending requests map and the connection, both wrapped
+/// in Arc<Mutex<>> for thread-safe shared access between the main connection
+/// and the background task.
 struct MultiplexedState<S> {
     pending_requests: Arc<Mutex<HashMap<CommandId, oneshot::Sender<Response>>>>,
     connection: Arc<Mutex<Connection<S>>>,
