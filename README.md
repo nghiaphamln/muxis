@@ -1,42 +1,21 @@
 # Muxis
 
-A high-performance Redis client for Rust with multiplexing, auto standalone/cluster detection, and full feature coverage. Built on Tokio for maximum performance.
+> High-performance Redis client for Rust with multiplexing and cluster support
+
+**Version**: 0.3.0 (Phase 3 Complete - Standalone API)
+
+[![Rust](https://img.shields.io/badge/rust-1.83%2B-orange.svg)](https://www.rust-lang.org/)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
 
 ## Features
 
-### Current (v0.3.0)
-
-- **Complete RESP2 Protocol**: Full implementation of Redis Serialization Protocol version 2
-- **Multiplexed Connections**: Handle multiple concurrent requests over a single TCP connection
-- **Async/Await**: Built on Tokio for efficient asynchronous I/O
-- **Type-Safe Commands**: Strongly typed command builders and response parsing
-- **Connection Management**: Configurable timeouts, graceful shutdown, and connection pooling
-- **Security**: URL validation, buffer overflow protection, and DOS prevention
-- **Production Ready**: Comprehensive test coverage (60+ tests) and 100% documented public API
-
-### Planned
-
-- Automatic cluster/standalone detection
-- MOVED/ASK redirect handling for cluster resharding
-- RESP3 protocol support with client-side caching
-- Pub/Sub with pattern subscriptions
-- Transactions (MULTI/EXEC/WATCH)
-- Lua scripting and Redis Functions
-- Redis Streams support
-- TLS/SSL connections
-- Sentinel support
-- Complete Redis command coverage
-
-See [ROADMAP.md](ROADMAP.md) for detailed development plan.
-
-## Installation
-
-Add this to your `Cargo.toml`:
-
-```toml
-[dependencies]
-muxis = "0.3"
-```
+- **Complete RESP2 Protocol** - Full Redis Serialization Protocol support
+- **Multiplexed Connections** - Multiple concurrent requests over single connection
+- **Type-Safe Commands** - Rust-native API with compile-time safety
+- **75+ Redis Commands** - String, Hash, List, Set, Sorted Set operations
+- **Connection Management** - Timeouts, authentication, database selection
+- **Security** - Password and ACL authentication support
+- **Production Ready** - 192 tests (111 unit + 81 integration), zero warnings
 
 ## Quick Start
 
@@ -74,6 +53,31 @@ More examples available in the `examples/` directory:
 - `builder.rs` - Using ClientBuilder for configuration
 - `pipeline.rs` - Multiple commands in sequence
 - `auth.rs` - Authentication and database selection
+
+## Supported Commands
+
+**Phase 3 Complete**: 75 Redis commands implemented across 5 categories
+
+### String Commands (7)
+`GET`, `SET`, `MGET`, `MSET`, `SETNX`, `SETEX`, `GETDEL`, `APPEND`, `STRLEN`, `INCR`, `DECR`
+
+### Key Commands (8)
+`DEL`, `EXISTS`, `TYPE`, `EXPIRE`, `EXPIREAT`, `TTL`, `PERSIST`, `RENAME`, `SCAN`
+
+### Hash Commands (13)
+`HSET`, `HGET`, `HMSET`, `HMGET`, `HGETALL`, `HDEL`, `HEXISTS`, `HLEN`, `HKEYS`, `HVALS`, `HINCRBY`, `HINCRBYFLOAT`, `HSETNX`
+
+### List Commands (14)
+`LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LLEN`, `LRANGE`, `LINDEX`, `LSET`, `LREM`, `LTRIM`, `RPOPLPUSH`, `BLPOP`, `BRPOP`, `LPOS`
+
+### Set Commands (13)
+`SADD`, `SREM`, `SPOP`, `SMEMBERS`, `SISMEMBER`, `SCARD`, `SRANDMEMBER`, `SDIFF`, `SINTER`, `SUNION`, `SDIFFSTORE`, `SINTERSTORE`, `SUNIONSTORE`
+
+### Sorted Set Commands (20)
+`ZADD`, `ZREM`, `ZRANGE`, `ZRANGEBYSCORE`, `ZRANK`, `ZSCORE`, `ZCARD`, `ZCOUNT`, `ZINCRBY`, `ZREVRANGE`, `ZREVRANK`, `ZREMRANGEBYRANK`, `ZREMRANGEBYSCORE`, `ZPOPMIN`, `ZPOPMAX`, `BZPOPMIN`, `BZPOPMAX`, `ZLEXCOUNT`, `ZRANGEBYLEX`, `ZREMRANGEBYLEX`
+
+### Connection Commands
+`PING`, `ECHO`, `AUTH`, `SELECT`, `CLIENT SETNAME`
 
 ## Usage Examples
 
@@ -214,23 +218,27 @@ Muxis is designed for high performance:
 
 Muxis has comprehensive test coverage:
 
-- **60+ tests**: 53 unit tests + 7 doc tests
+- **192 total tests**: 111 unit tests + 81 integration tests + 7 doc tests
 - **Protocol tests**: Frame encoding/decoding with edge cases
+- **Command tests**: All 75 commands with unit and integration tests
 - **Connection tests**: Builder patterns, multiplexing, command execution
 - **100% public API documentation** with runnable examples
-- **Integration tests**: Real Redis instances (requires Docker, use `--ignored` flag)
+- **Zero clippy warnings**: Clean code following Rust best practices
 
 Run tests:
 
 ```bash
-# Unit tests
-cargo test --all-features
+# Unit tests (111 tests)
+cargo test --all-features --lib
 
-# Integration tests (requires Redis)
+# Integration tests (81 tests, requires Redis at 127.0.0.1:6379)
 cargo test --all-features -- --ignored
 
-# Documentation tests
+# Documentation tests (7 tests)
 cargo test --doc --all-features
+
+# All tests
+cargo test --all-features
 ```
 
 ## Development
