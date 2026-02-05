@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use muxis_proto::frame::Frame;
+use crate::proto::frame::Frame;
 
 /// A command ready to be sent to Redis.
 ///
@@ -9,7 +9,7 @@ use muxis_proto::frame::Frame;
 /// # Example
 ///
 /// ```
-/// use muxis_core::command::{Cmd, get, set};
+/// use muxis::core::command::{Cmd, get, set};
 ///
 /// let cmd = Cmd::new("SET").arg("key").arg("value");
 /// let get_cmd = get("key");

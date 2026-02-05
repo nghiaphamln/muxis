@@ -7,7 +7,7 @@ use crate::{Client, Error};
 /// # Example
 ///
 /// ```no_run
-/// use muxis_core::builder::ClientBuilder;
+/// use muxis::core::builder::ClientBuilder;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {

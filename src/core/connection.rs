@@ -1,8 +1,8 @@
 use std::fmt;
 use std::time::Duration;
 
-use muxis_proto::codec::{Decoder, Encoder};
-use muxis_proto::frame::Frame;
+use crate::proto::codec::{Decoder, Encoder};
+use crate::proto::frame::Frame;
 use tokio::io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHalf, WriteHalf};
 
 /// A connection to a Redis server.
@@ -13,7 +13,7 @@ use tokio::io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHa
 /// # Example
 ///
 /// ```no_run
-/// use muxis_core::connection::Connection;
+/// use muxis::core::connection::Connection;
 /// use tokio::net::TcpStream;
 ///
 /// #[tokio::main]
@@ -22,7 +22,7 @@ use tokio::io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHa
 ///     let mut conn = Connection::new(stream);
 ///
 ///     // Write a PING command
-///     use muxis_proto::frame::Frame;
+///     use muxis::proto::frame::Frame;
 ///     let cmd = Frame::Array(vec![Frame::BulkString(Some("PING".into()))]);
 ///     conn.write_frame(&cmd).await?;
 ///

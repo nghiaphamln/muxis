@@ -1,5 +1,5 @@
-use crate::connection::{Connection, ConnectionReader, ConnectionWriter};
-use muxis_proto::frame::Frame;
+use crate::core::connection::{Connection, ConnectionReader, ConnectionWriter};
+use crate::proto::frame::Frame;
 use std::fmt;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{mpsc, oneshot};

@@ -1,6 +1,6 @@
 use bytes::Buf;
 
-use crate::frame::Frame;
+use crate::proto::frame::Frame;
 
 const DEFAULT_MAX_FRAME_SIZE: usize = 512 * 1024 * 1024; // 512 MB default
 
@@ -13,8 +13,8 @@ const DEFAULT_MAX_FRAME_SIZE: usize = 512 * 1024 * 1024; // 512 MB default
 /// # Example
 ///
 /// ```
-/// use muxis_proto::codec::Decoder;
-/// use muxis_proto::frame::Frame;
+/// use muxis::proto::codec::Decoder;
+/// use muxis::proto::frame::Frame;
 ///
 /// let mut decoder = Decoder::new();
 /// decoder.append(b"+OK\r\n");
