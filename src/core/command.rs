@@ -463,6 +463,116 @@ pub fn lpos(key: impl Into<Bytes>, element: impl Into<Bytes>) -> Cmd {
     Cmd::new("LPOS").arg(key).arg(element)
 }
 
+/// Creates a SADD command.
+#[inline]
+pub fn sadd(key: String, members: Vec<Bytes>) -> Cmd {
+    let mut cmd = Cmd::new("SADD").arg(key);
+    for member in members {
+        cmd = cmd.arg(member);
+    }
+    cmd
+}
+
+/// Creates a SREM command.
+#[inline]
+pub fn srem(key: String, members: Vec<Bytes>) -> Cmd {
+    let mut cmd = Cmd::new("SREM").arg(key);
+    for member in members {
+        cmd = cmd.arg(member);
+    }
+    cmd
+}
+
+/// Creates a SPOP command.
+#[inline]
+pub fn spop(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("SPOP").arg(key)
+}
+
+/// Creates a SMEMBERS command.
+#[inline]
+pub fn smembers(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("SMEMBERS").arg(key)
+}
+
+/// Creates a SISMEMBER command.
+#[inline]
+pub fn sismember(key: impl Into<Bytes>, member: impl Into<Bytes>) -> Cmd {
+    Cmd::new("SISMEMBER").arg(key).arg(member)
+}
+
+/// Creates a SCARD command.
+#[inline]
+pub fn scard(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("SCARD").arg(key)
+}
+
+/// Creates a SRANDMEMBER command.
+#[inline]
+pub fn srandmember(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("SRANDMEMBER").arg(key)
+}
+
+/// Creates a SDIFF command.
+#[inline]
+pub fn sdiff(keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("SDIFF");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
+/// Creates a SINTER command.
+#[inline]
+pub fn sinter(keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("SINTER");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
+/// Creates a SUNION command.
+#[inline]
+pub fn sunion(keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("SUNION");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
+/// Creates a SDIFFSTORE command.
+#[inline]
+pub fn sdiffstore(destination: String, keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("SDIFFSTORE").arg(destination);
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
+/// Creates a SINTERSTORE command.
+#[inline]
+pub fn sinterstore(destination: String, keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("SINTERSTORE").arg(destination);
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
+/// Creates a SUNIONSTORE command.
+#[inline]
+pub fn sunionstore(destination: String, keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("SUNIONSTORE").arg(destination);
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
 /// Parses a frame as a Redis response.
 #[inline]
 pub fn parse_frame_response(frame: Frame) -> Result<Frame, crate::Error> {
@@ -1381,5 +1491,96 @@ mod tests {
         let (key, value) = result.unwrap();
         assert_eq!(key, "mylist");
         assert_eq!(value, Bytes::from("value"));
+    }
+
+    #[test]
+    fn test_sadd_cmd() {
+        let cmd = sadd("key".to_string(), vec![Bytes::from("a"), Bytes::from("b")]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SADD".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("a".into())),
+                Frame::BulkString(Some("b".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_srem_cmd() {
+        let cmd = srem("key".to_string(), vec![Bytes::from("a")]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SREM".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("a".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_smembers_cmd() {
+        let cmd = smembers("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SMEMBERS".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_sismember_cmd() {
+        let cmd = sismember("key", "member");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SISMEMBER".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("member".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_sdiff_cmd() {
+        let cmd = sdiff(vec!["key1".to_string(), "key2".to_string()]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SDIFF".into())),
+                Frame::BulkString(Some("key1".into())),
+                Frame::BulkString(Some("key2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_sinter_cmd() {
+        let cmd = sinter(vec!["key1".to_string(), "key2".to_string()]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SINTER".into())),
+                Frame::BulkString(Some("key1".into())),
+                Frame::BulkString(Some("key2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_sdiffstore_cmd() {
+        let cmd = sdiffstore("dest".to_string(), vec!["key1".to_string()]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SDIFFSTORE".into())),
+                Frame::BulkString(Some("dest".into())),
+                Frame::BulkString(Some("key1".into()))
+            ])
+        );
     }
 }

@@ -1548,6 +1548,364 @@ impl Client {
             _ => command::frame_to_int(frame).map(Some),
         }
     }
+
+    /// Adds one or more members to a set (SADD).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The set key.
+    /// * `members` - Slice of members to add.
+    ///
+    /// # Returns
+    ///
+    /// The number of members that were added to the set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let added = client.sadd("myset", &[Bytes::from("a"), Bytes::from("b")]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sadd(&mut self, key: &str, members: &[Bytes]) -> Result<i64> {
+        let members_vec = members.to_vec();
+        let cmd = command::sadd(key.to_string(), members_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Removes one or more members from a set (SREM).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The set key.
+    /// * `members` - Slice of members to remove.
+    ///
+    /// # Returns
+    ///
+    /// The number of members that were removed from the set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let removed = client.srem("myset", &[Bytes::from("a")]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn srem(&mut self, key: &str, members: &[Bytes]) -> Result<i64> {
+        let members_vec = members.to_vec();
+        let cmd = command::srem(key.to_string(), members_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Removes and returns a random member from a set (SPOP).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The set key.
+    ///
+    /// # Returns
+    ///
+    /// `Some(Bytes)` if the set exists and has members, or `None` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let member = client.spop("myset").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn spop(&mut self, key: &str) -> Result<Option<Bytes>> {
+        let cmd = command::spop(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bytes(frame)
+    }
+
+    /// Returns all members of a set (SMEMBERS).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The set key.
+    ///
+    /// # Returns
+    ///
+    /// A vector of all members in the set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let members = client.smembers("myset").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn smembers(&mut self, key: &str) -> Result<Vec<String>> {
+        let cmd = command::smembers(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Checks if a member exists in a set (SISMEMBER).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The set key.
+    /// * `member` - The member to check.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the member exists in the set, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let exists = client.sismember("myset", Bytes::from("member")).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sismember(&mut self, key: &str, member: Bytes) -> Result<bool> {
+        let cmd = command::sismember(key.to_string(), member);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
+
+    /// Returns the cardinality (size) of a set (SCARD).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The set key.
+    ///
+    /// # Returns
+    ///
+    /// The number of members in the set, or 0 if the key does not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let size = client.scard("myset").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn scard(&mut self, key: &str) -> Result<i64> {
+        let cmd = command::scard(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Returns a random member from a set (SRANDMEMBER).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The set key.
+    ///
+    /// # Returns
+    ///
+    /// `Some(String)` with a random member, or `None` if the set is empty.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let member = client.srandmember("myset").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn srandmember(&mut self, key: &str) -> Result<Option<String>> {
+        let cmd = command::srandmember(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        match frame {
+            Frame::Null => Ok(None),
+            _ => command::frame_to_string(frame).map(Some),
+        }
+    }
+
+    /// Returns the difference between the first set and all successive sets (SDIFF).
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - Slice of set keys.
+    ///
+    /// # Returns
+    ///
+    /// A vector of members in the difference.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let diff = client.sdiff(&["set1", "set2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sdiff(&mut self, keys: &[&str]) -> Result<Vec<String>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::sdiff(keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Returns the intersection of all given sets (SINTER).
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - Slice of set keys.
+    ///
+    /// # Returns
+    ///
+    /// A vector of members in the intersection.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let inter = client.sinter(&["set1", "set2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sinter(&mut self, keys: &[&str]) -> Result<Vec<String>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::sinter(keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Returns the union of all given sets (SUNION).
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - Slice of set keys.
+    ///
+    /// # Returns
+    ///
+    /// A vector of members in the union.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let union = client.sunion(&["set1", "set2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sunion(&mut self, keys: &[&str]) -> Result<Vec<String>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::sunion(keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Stores the difference between sets in a destination key (SDIFFSTORE).
+    ///
+    /// # Arguments
+    ///
+    /// * `destination` - The destination key.
+    /// * `keys` - Slice of set keys.
+    ///
+    /// # Returns
+    ///
+    /// The number of members in the resulting set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let count = client.sdiffstore("dest", &["set1", "set2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sdiffstore(&mut self, destination: &str, keys: &[&str]) -> Result<i64> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::sdiffstore(destination.to_string(), keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Stores the intersection of sets in a destination key (SINTERSTORE).
+    ///
+    /// # Arguments
+    ///
+    /// * `destination` - The destination key.
+    /// * `keys` - Slice of set keys.
+    ///
+    /// # Returns
+    ///
+    /// The number of members in the resulting set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let count = client.sinterstore("dest", &["set1", "set2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sinterstore(&mut self, destination: &str, keys: &[&str]) -> Result<i64> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::sinterstore(destination.to_string(), keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Stores the union of sets in a destination key (SUNIONSTORE).
+    ///
+    /// # Arguments
+    ///
+    /// * `destination` - The destination key.
+    /// * `keys` - Slice of set keys.
+    ///
+    /// # Returns
+    ///
+    /// The number of members in the resulting set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let count = client.sunionstore("dest", &["set1", "set2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn sunionstore(&mut self, destination: &str, keys: &[&str]) -> Result<i64> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::sunionstore(destination.to_string(), keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
 }
 
 #[cfg(test)]

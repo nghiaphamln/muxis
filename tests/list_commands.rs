@@ -13,7 +13,10 @@ async fn test_lpush_and_rpush() {
     let len1 = client.lpush("mylist", &[Bytes::from("a")]).await.unwrap();
     assert_eq!(len1, 1);
 
-    let len2 = client.rpush("mylist", &[Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    let len2 = client
+        .rpush("mylist", &[Bytes::from("b"), Bytes::from("c")])
+        .await
+        .unwrap();
     assert_eq!(len2, 3);
 }
 
@@ -25,7 +28,13 @@ async fn test_lpop_and_rpop() {
         .expect("Failed to connect");
 
     client.del("poplist").await.ok();
-    client.rpush("poplist", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .rpush(
+            "poplist",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     let first = client.lpop("poplist").await.unwrap();
     assert_eq!(first, Some(Bytes::from("a")));
@@ -49,7 +58,10 @@ async fn test_llen() {
     let len = client.llen("lenlist").await.unwrap();
     assert_eq!(len, 0);
 
-    client.rpush("lenlist", &[Bytes::from("a"), Bytes::from("b")]).await.unwrap();
+    client
+        .rpush("lenlist", &[Bytes::from("a"), Bytes::from("b")])
+        .await
+        .unwrap();
     let len2 = client.llen("lenlist").await.unwrap();
     assert_eq!(len2, 2);
 }
@@ -62,12 +74,18 @@ async fn test_lrange() {
         .expect("Failed to connect");
 
     client.del("rangelist").await.ok();
-    client.rpush("rangelist", &[
-        Bytes::from("a"),
-        Bytes::from("b"),
-        Bytes::from("c"),
-        Bytes::from("d"),
-    ]).await.unwrap();
+    client
+        .rpush(
+            "rangelist",
+            &[
+                Bytes::from("a"),
+                Bytes::from("b"),
+                Bytes::from("c"),
+                Bytes::from("d"),
+            ],
+        )
+        .await
+        .unwrap();
 
     let range = client.lrange("rangelist", 1, 2).await.unwrap();
     assert_eq!(range.len(), 2);
@@ -86,7 +104,13 @@ async fn test_lindex() {
         .expect("Failed to connect");
 
     client.del("indexlist").await.ok();
-    client.rpush("indexlist", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .rpush(
+            "indexlist",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     let elem = client.lindex("indexlist", 1).await.unwrap();
     assert_eq!(elem, Some(Bytes::from("b")));
@@ -106,7 +130,13 @@ async fn test_lset() {
         .expect("Failed to connect");
 
     client.del("setlist").await.ok();
-    client.rpush("setlist", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .rpush(
+            "setlist",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     client.lset("setlist", 1, Bytes::from("x")).await.unwrap();
 
@@ -122,13 +152,19 @@ async fn test_lrem() {
         .expect("Failed to connect");
 
     client.del("remlist").await.ok();
-    client.rpush("remlist", &[
-        Bytes::from("a"),
-        Bytes::from("b"),
-        Bytes::from("a"),
-        Bytes::from("c"),
-        Bytes::from("a"),
-    ]).await.unwrap();
+    client
+        .rpush(
+            "remlist",
+            &[
+                Bytes::from("a"),
+                Bytes::from("b"),
+                Bytes::from("a"),
+                Bytes::from("c"),
+                Bytes::from("a"),
+            ],
+        )
+        .await
+        .unwrap();
 
     let removed = client.lrem("remlist", 2, Bytes::from("a")).await.unwrap();
     assert_eq!(removed, 2);
@@ -145,13 +181,19 @@ async fn test_ltrim() {
         .expect("Failed to connect");
 
     client.del("trimlist").await.ok();
-    client.rpush("trimlist", &[
-        Bytes::from("a"),
-        Bytes::from("b"),
-        Bytes::from("c"),
-        Bytes::from("d"),
-        Bytes::from("e"),
-    ]).await.unwrap();
+    client
+        .rpush(
+            "trimlist",
+            &[
+                Bytes::from("a"),
+                Bytes::from("b"),
+                Bytes::from("c"),
+                Bytes::from("d"),
+                Bytes::from("e"),
+            ],
+        )
+        .await
+        .unwrap();
 
     client.ltrim("trimlist", 1, 3).await.unwrap();
 
@@ -171,7 +213,13 @@ async fn test_rpoplpush() {
     client.del("source").await.ok();
     client.del("dest").await.ok();
 
-    client.rpush("source", &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")]).await.unwrap();
+    client
+        .rpush(
+            "source",
+            &[Bytes::from("a"), Bytes::from("b"), Bytes::from("c")],
+        )
+        .await
+        .unwrap();
 
     let elem = client.rpoplpush("source", "dest").await.unwrap();
     assert_eq!(elem, Some(Bytes::from("c")));
@@ -204,7 +252,10 @@ async fn test_blpop_immediate() {
         .expect("Failed to connect");
 
     client.del("blpopimmediate").await.ok();
-    client.rpush("blpopimmediate", &[Bytes::from("value")]).await.unwrap();
+    client
+        .rpush("blpopimmediate", &[Bytes::from("value")])
+        .await
+        .unwrap();
 
     let result = client.blpop(&["blpopimmediate"], 5).await.unwrap();
     assert!(result.is_some());
@@ -221,12 +272,18 @@ async fn test_lpos() {
         .expect("Failed to connect");
 
     client.del("poslist").await.ok();
-    client.rpush("poslist", &[
-        Bytes::from("a"),
-        Bytes::from("b"),
-        Bytes::from("c"),
-        Bytes::from("b"),
-    ]).await.unwrap();
+    client
+        .rpush(
+            "poslist",
+            &[
+                Bytes::from("a"),
+                Bytes::from("b"),
+                Bytes::from("c"),
+                Bytes::from("b"),
+            ],
+        )
+        .await
+        .unwrap();
 
     let pos = client.lpos("poslist", Bytes::from("b")).await.unwrap();
     assert_eq!(pos, Some(1));
