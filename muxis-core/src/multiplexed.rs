@@ -1,6 +1,7 @@
 use std::fmt;
 use tokio::sync::{mpsc, oneshot};
 use tokio::io::{AsyncRead, AsyncWrite};
+use tracing::{debug, instrument, error};
 use muxis_proto::frame::Frame;
 use crate::connection::{Connection, ConnectionReader, ConnectionWriter};
 
@@ -49,6 +50,7 @@ impl MultiplexedConnection {
     }
 
     /// Sends a command to the server and awaits the response.
+    #[instrument(skip(self), level = "debug")]
     pub async fn send_command(&self, frame: Frame) -> crate::Result<Frame> {
         let (response_tx, response_rx) = oneshot::channel();
         let request = Request {
@@ -87,8 +89,10 @@ async fn run_writer<S>(
     S: AsyncRead + AsyncWrite + Unpin,
 {
     while let Some(req) = request_rx.recv().await {
+        debug!(?req.frame, "sending frame");
         // Write frame to socket
         if let Err(e) = writer.write_frame(&req.frame).await {
+            error!(error = ?e, "failed to write frame");
             // Failed to write, notify client
             let _ = req.response_tx.send(Err(crate::Error::Io { source: e }));
             return; // Stop writer task
@@ -118,9 +122,11 @@ async fn run_reader<S>(
         // Read the next frame from the connection
         match reader.read_frame().await {
             Ok(frame) => {
+                debug!(?frame, "received frame");
                 let _ = tx.send(Ok(frame));
             }
             Err(e) => {
+                error!(error = ?e, "failed to read frame");
                 let _ = tx.send(Err(e));
                 // If we hit a protocol error or IO error, the connection is likely dead.
                 // We should stop the reader.
