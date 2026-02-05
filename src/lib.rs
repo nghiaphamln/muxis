@@ -27,8 +27,8 @@
 
 #![warn(missing_docs)]
 
-pub mod proto;
 pub mod core;
+pub mod proto;
 
 #[cfg(feature = "cluster")]
 pub mod cluster;
@@ -37,5 +37,5 @@ pub mod cluster;
 pub mod testing;
 
 // Re-export high-level client types for convenience
-pub use crate::core::{Client, Error, Result};
 pub use crate::core::builder::ClientBuilder;
+pub use crate::core::{Client, Error, Result};

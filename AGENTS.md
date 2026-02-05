@@ -1,148 +1,106 @@
 # AGENTS.md - Muxis Development Guidelines
 
-> Guidelines for AI agents and contributors working on the Muxis Redis client library.
+> Concise guidelines for AI agents and contributors working on Muxis Redis client.
 
 ## Project Overview
 
-Muxis is a high-performance Redis client for Rust with multiplexing, auto standalone/cluster detection, and full feature coverage. Built on Tokio for maximum performance.
+**Muxis** - High-performance Redis client for Rust with multiplexing and cluster support.
+- **Version**: 0.3.0 (single-crate architecture)
+- **Language**: Rust + Tokio async runtime
+- **No publishing to crates.io** (internal project)
 
-## Build Commands
+## Quick Commands
 
 ```bash
-# Build all crates
+# Build
 cargo build --all-targets --all-features
+cargo check --all-targets --all-features        # Faster, no codegen
 
-# Build release
-cargo build --release --all-targets --all-features
+# Quality (MANDATORY before commits)
+cargo fmt --all                                   # Format code
+cargo clippy --all-targets --all-features -- -D warnings  # Lint (must pass)
 
-# Check without building (faster)
-cargo check --all-targets --all-features
+# Tests
+cargo test --all-features                         # All tests
+cargo test test_name --all-features              # Single test by name
+cargo test proto --all-features                  # Tests in module
+cargo test -- --nocapture                        # Show output
+cargo test -- --ignored                          # Integration tests (needs Docker)
+
+# Documentation
+cargo doc --all-features --no-deps --open        # Build and open docs
+
+# Examples
+cargo check --examples --all-features            # Check examples compile
+cargo run --example basic                        # Run example (needs Redis)
 ```
 
-## Code Quality (MANDATORY before each commit)
-
-```bash
-# Format check
-cargo fmt --all -- --check
-
-# Format fix
-cargo fmt --all
-
-# Clippy - MUST pass with no warnings
-cargo clippy --all-targets --all-features -- -D warnings
-
-# Full quality check (run after EVERY feature)
-cargo fmt --all && cargo clippy --all-targets --all-features -- -D warnings
-```
-
-**CRITICAL**: Never use `#[allow(...)]` to bypass clippy warnings. Fix the root cause.
-
-## Test Commands
-
-```bash
-# Run all tests
-cargo test --all-targets --all-features
-
-# Run single test by name
-cargo test test_name --all-features
-
-# Run tests in specific crate
-cargo test -p muxis-proto --all-features
-
-# Run tests matching pattern
-cargo test resp_parser --all-features
-
-# Run with output
-cargo test --all-features -- --nocapture
-
-# Run ignored tests (integration)
-cargo test --all-features -- --ignored
-
-# Doc tests only
-cargo test --doc --all-features
-```
-
-## Documentation
-
-```bash
-# Build docs
-cargo doc --all-features --no-deps
-
-# Build and open docs
-cargo doc --all-features --no-deps --open
-
-# Check doc coverage
-RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
-```
-
-## Directory Structure
+## Project Structure
 
 ```
 muxis/
-├── Cargo.toml              # Workspace manifest
-├── muxis-proto/            # RESP codec crate
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs          # Public exports
-│       ├── frame/          # Frame types
-│       │   ├── mod.rs
-│       │   ├── types.rs
-│       │   └── value.rs
-│       ├── codec/          # Encoder/decoder
-│       │   ├── mod.rs
-│       │   ├── encoder.rs
-│       │   └── decoder.rs
-│       └── error.rs
-├── muxis-core/             # Core connection crate
-├── muxis-client/           # Public API crate
-├── muxis-cluster/          # Cluster support crate
-└── tests/                  # Integration tests
-    ├── standalone.rs
-    └── cluster.rs
+├── src/
+│   ├── lib.rs              # Public API, re-exports
+│   ├── proto/              # RESP protocol codec (8 files)
+│   ├── core/               # Connection, multiplexing (6 files)
+│   ├── cluster/            # Cluster support (placeholder)
+│   └── testing/            # Test utilities (feature-gated)
+├── tests/                  # Integration tests
+└── examples/               # Usage examples (basic, builder, pipeline, auth)
 ```
-
-**Rules**:
-- Each module = one directory
-- Each feature = separate file within module directory
-- `mod.rs` only re-exports, no implementation
-- Keep files under 500 lines, split if larger
 
 ## Code Style
 
-### Language
-- **English only** in code, comments, docs, and commit messages
-- **No non-ASCII characters** anywhere in source files
-- **No emojis** in code or documentation
+### Language & Formatting
+- **English only** - code, comments, docs, commit messages
+- **No emojis** - in code or documentation
+- **No non-ASCII** - anywhere in source files
+- **Max line length**: 100 characters
+- Use `rustfmt` defaults (run `cargo fmt --all` before commits)
 
-### Formatting
-- Use `rustfmt` defaults (no custom rustfmt.toml unless necessary)
-- Max line length: 100 characters
-- Use trailing commas in multi-line constructs
-
-### Imports
+### Naming Conventions
 ```rust
-// Order: std -> external -> crate -> super -> self
-use std::collections::HashMap;
-use std::io::{self, Read, Write};
+// Types: PascalCase
+struct MultiplexedConnection { }
+enum Frame { }
 
-use bytes::{Buf, BufMut, Bytes};
-use tokio::io::{AsyncRead, AsyncWrite};
+// Functions/methods: snake_case
+async fn parse_frame() { }
+pub fn connect_timeout() { }
 
-use crate::error::Result;
-use super::frame::Frame;
+// Constants: SCREAMING_SNAKE_CASE
+const MAX_FRAME_SIZE: usize = 512 * 1024 * 1024;
+
+// Modules: snake_case
+mod slot_map;
+
+// Features: kebab-case (in Cargo.toml)
+[features]
+client-side-caching = []
 ```
 
-### Naming
-- Types: `PascalCase` (e.g., `MultiplexedConnection`)
-- Functions/methods: `snake_case` (e.g., `parse_frame`)
-- Constants: `SCREAMING_SNAKE_CASE` (e.g., `MAX_FRAME_SIZE`)
-- Modules: `snake_case` (e.g., `slot_map`)
-- Feature flags: `kebab-case` in Cargo.toml (e.g., `client-side-caching`)
+### Import Order
+```rust
+// 1. std library
+use std::collections::HashMap;
+use std::io::{self, Read};
 
-### Types
-- Prefer explicit types over inference for public APIs
+// 2. External crates
+use bytes::{Buf, BufMut, Bytes};
+use tokio::io::AsyncRead;
+
+// 3. Crate internal
+use crate::proto::Frame;
+
+// 4. Parent/current module
+use super::encoder::Encoder;
+```
+
+### Type Conventions
+- Prefer explicit types in public APIs
 - Use `Bytes` over `Vec<u8>` for network data
-- Use newtypes for domain concepts (e.g., `Slot(u16)`, `NodeId(String)`)
+- Use newtypes for domain concepts: `Slot(u16)`, `NodeId(String)`
+- Use `impl Into<T>` for flexibility in public APIs
 
 ### Error Handling
 ```rust
@@ -150,116 +108,96 @@ use super::frame::Frame;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("connection failed: {0}")]
-    Connection(#[from] io::Error),
+    Io(#[from] std::io::Error),
     
     #[error("protocol error: {message}")]
     Protocol { message: String },
 }
 
-// Use Result type alias
 pub type Result<T> = std::result::Result<T, Error>;
 
-// Never panic in library code, return Result
-// Never use .unwrap() except in tests
+// NEVER panic in library code - always return Result
+// NEVER use .unwrap() or .expect() - except in tests
+// NEVER use #[allow(...)] to bypass clippy - fix the root cause
 ```
 
 ### Documentation
 ```rust
 /// Short summary (one line).
 ///
-/// Longer description if needed. Explain the "why" not just "what".
+/// Detailed description explaining "why", not just "what".
 ///
 /// # Arguments
 ///
-/// * `key` - The Redis key to get
+/// * `key` - Description of key parameter
 ///
 /// # Returns
 ///
-/// The value if exists, `None` otherwise.
+/// Description of return value.
 ///
 /// # Errors
 ///
-/// Returns error if connection fails or protocol error occurs.
+/// Returns error if connection fails or protocol error.
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```no_run
+/// # use muxis::{Client, Result};
+/// # async fn example() -> Result<()> {
+/// let mut client = Client::connect("redis://127.0.0.1").await?;
 /// let value = client.get("mykey").await?;
+/// # Ok(())
+/// # }
 /// ```
-pub async fn get(&self, key: &str) -> Result<Option<Bytes>> {
-    // ...
-}
+pub async fn get(&self, key: &str) -> Result<Option<Bytes>> { }
 ```
 
-**Every public item MUST have documentation.**
-
-## Testing Requirements
-
-### Unit Tests
-- Place in same file with `#[cfg(test)]` module
-- Use descriptive test names: `test_parse_bulk_string_empty`
-- Cover happy path, edge cases, and error conditions
-- Use `mockall` or similar for mocking dependencies
-
-### Integration Tests
-- Place in `tests/` directory
-- Require `--ignored` flag (need Docker)
-- Test with real Redis instances
-- Cover cluster scenarios (resharding, failover)
-
-### Test Coverage
-- All public APIs must have tests
-- All error paths must have tests
-- Edge cases: empty input, max values, unicode (if applicable)
-
-## API Design
-
-- Design for forward compatibility (avoid breaking changes)
-- Use builder pattern for complex configurations
-- Prefer `impl Into<T>` over concrete types in public APIs
-- Use `#[non_exhaustive]` on public enums and structs with fields
-- Mark experimental APIs with `#[doc(hidden)]` until stable
+**Every public item MUST have documentation** (`#![warn(missing_docs)]` is enforced).
 
 ## Git Workflow
-
-### Branch Naming
-```
-feat/short-description     # New feature
-fix/issue-description      # Bug fix
-refactor/what-changed      # Code refactoring
-docs/what-updated          # Documentation
-test/what-tested           # Test additions
-chore/task-description     # Maintenance tasks
-```
 
 ### Commit Messages (Conventional Commits)
 ```
 <type>(<scope>): <subject>
 
 [optional body]
-
-[optional footer]
 ```
 
-**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `ci`
+**Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
 
 **Examples**:
 ```
 feat(proto): add RESP3 parser support
 fix(cluster): handle MOVED redirect correctly
-docs(client): add connection pool examples
+docs: update examples with new API
 test(core): add multiplexing stress tests
-refactor(proto): split decoder into streaming chunks
+refactor: simplify connection pooling logic
 ```
 
-## Workflow Checklist
-
-Before marking a task complete:
-1. [ ] Code compiles: `cargo check --all-targets --all-features`
-2. [ ] Format pass: `cargo fmt --all`
-3. [ ] Clippy pass: `cargo clippy --all-targets --all-features -- -D warnings`
-4. [ ] Tests pass: `cargo test --all-targets --all-features`
-5. [ ] Docs build: `cargo doc --all-features --no-deps`
+### Pre-Commit Checklist
+Before marking work complete:
+1. [ ] `cargo check --all-targets --all-features` - compiles
+2. [ ] `cargo fmt --all` - formatted
+3. [ ] `cargo clippy --all-targets --all-features -- -D warnings` - no warnings
+4. [ ] `cargo test --all-features` - all tests pass
+5. [ ] `cargo doc --all-features --no-deps` - docs build
 6. [ ] No `#[allow(...)]` added
 7. [ ] Public APIs documented
-8. [ ] Commit message follows conventional commits
+8. [ ] Commit message follows convention
+
+## Testing
+
+- **Unit tests**: In same file with `#[cfg(test)]`
+- **Integration tests**: In `tests/` directory, require `--ignored` flag
+- **Test names**: Descriptive, e.g., `test_parse_bulk_string_empty`
+- **Coverage**: All public APIs, all error paths, edge cases
+- Use `#[tokio::test]` for async tests
+
+## Notes for AI Agents
+
+- This is a **single-crate project** (no workspace)
+- **Version 0.3.0** uses simplified public API
+- Module structure: `proto/` (codec), `core/` (connections), `cluster/` (future)
+- Cluster support is placeholder only (not yet implemented)
+- Examples in `examples/` directory demonstrate current API
+- Feature flags: `tls`, `resp3`, `cluster`, `json`, `streams`, `tracing`, `test-utils`

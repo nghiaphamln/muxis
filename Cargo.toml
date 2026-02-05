@@ -1,6 +1,6 @@
 [package]
 name = "muxis"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Muxis Contributors"]
 description = "High-performance Redis client for Rust with multiplexing"

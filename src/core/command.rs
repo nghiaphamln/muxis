@@ -1,5 +1,5 @@
-use bytes::Bytes;
 use crate::proto::frame::Frame;
+use bytes::Bytes;
 
 /// A command ready to be sent to Redis.
 ///

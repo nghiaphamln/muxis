@@ -7,12 +7,7 @@
 //!
 //! - `cluster` - Enable cluster mode support (default: disabled)
 //!
-//! ## Modules
+//! ## Status
 //!
-//! - [`cluster`] - Cluster connection and management
-//! - [`slot_map`] - Slot-based routing logic
-
-/// Cluster implementation.
-pub mod cluster;
-/// Slot map for routing.
-pub mod slot_map;
+//! This module is a placeholder for future cluster implementation.
+//! Currently under development.

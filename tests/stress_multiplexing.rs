@@ -1,6 +1,6 @@
-use muxis::ClientBuilder;
 use muxis::proto::codec::{Decoder, Encoder};
 use muxis::proto::frame::Frame;
+use muxis::ClientBuilder;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
