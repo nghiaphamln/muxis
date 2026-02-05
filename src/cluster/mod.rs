@@ -40,6 +40,8 @@
 pub mod commands;
 mod errors;
 mod slot;
+mod topology;
 
 pub use errors::parse_redis_error;
 pub use slot::{key_slot, SLOT_COUNT};
+pub use topology::{ClusterTopology, NodeFlags, NodeId, NodeInfo, SlotRange};
