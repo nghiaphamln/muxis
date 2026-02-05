@@ -2,6 +2,8 @@ use bytes::Buf;
 
 use crate::frame::Frame;
 
+const DEFAULT_MAX_FRAME_SIZE: usize = 512 * 1024 * 1024; // 512 MB default
+
 /// A RESP decoder that converts bytes to [`Frame`] types.
 ///
 /// The decoder handles streaming input and can decode frames incrementally.
@@ -21,6 +23,7 @@ use crate::frame::Frame;
 #[derive(Debug)]
 pub struct Decoder {
     buf: bytes::BytesMut,
+    max_frame_size: usize,
 }
 
 impl Decoder {
@@ -28,6 +31,19 @@ impl Decoder {
     pub fn new() -> Self {
         Self {
             buf: bytes::BytesMut::new(),
+            max_frame_size: DEFAULT_MAX_FRAME_SIZE,
+        }
+    }
+
+    /// Creates a new decoder with a custom maximum frame size.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_frame_size` - Maximum size in bytes for a single frame
+    pub fn with_max_frame_size(max_frame_size: usize) -> Self {
+        Self {
+            buf: bytes::BytesMut::new(),
+            max_frame_size,
         }
     }
 
@@ -39,6 +55,9 @@ impl Decoder {
     ///
     /// * `data` - Raw bytes to append
     pub fn append(&mut self, data: &[u8]) {
+        if self.buf.len() + data.len() > self.max_frame_size {
+            panic!("Buffer size exceeded maximum frame size");
+        }
         self.buf.extend_from_slice(data);
     }
 
@@ -54,6 +73,11 @@ impl Decoder {
     pub fn decode(&mut self) -> Result<Option<Frame>, String> {
         if self.buf.is_empty() {
             return Ok(None);
+        }
+
+        // Check if buffer size exceeds max allowed frame size
+        if self.buf.len() > self.max_frame_size {
+            return Err("Buffer size exceeded maximum frame size".to_string());
         }
 
         let frame = match self.buf[0] {
@@ -123,6 +147,12 @@ impl Decoder {
         }
 
         let len = len as usize;
+
+        // Check if the declared length exceeds our max frame size
+        if len > self.max_frame_size {
+            return Err("Bulk string length exceeds maximum frame size".to_string());
+        }
+
         if self.buf.len() < len + 2 {
             return Ok(None);
         }
@@ -145,7 +175,15 @@ impl Decoder {
             return Ok(Some(Frame::Null));
         }
 
-        let mut items = Vec::with_capacity(len as usize);
+        let len = len as usize;
+
+        // Check if the array length is reasonable
+        if len > self.max_frame_size / 16 {
+            // Assume minimum 16 bytes per item
+            return Err("Array length exceeds reasonable maximum".to_string());
+        }
+
+        let mut items = Vec::with_capacity(len);
         for _ in 0..len {
             match self.decode()? {
                 Some(frame) => items.push(frame),

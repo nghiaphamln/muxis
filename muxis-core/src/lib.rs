@@ -8,6 +8,7 @@
 //! - [`connection`] - Single connection management
 //! - [`command`] - Command builders
 //! - [`builder`] - Client builder
+//! - [`multiplexed`] - Multiplexed connection for concurrent requests
 
 use bytes::Bytes;
 use std::time::Duration;
@@ -17,6 +18,7 @@ pub use muxis_proto::error::{Error, Result};
 pub mod builder;
 pub mod command;
 pub mod connection;
+pub mod multiplexed;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "tls")] {
@@ -55,20 +57,25 @@ impl Client {
         client_name: Option<String>,
         _tls: bool,
     ) -> Result<Self> {
-        let host = if let Some(host) = address.strip_prefix("redis://") {
-            host
-        } else if let Some(host) = address.strip_prefix("rediss://") {
-            host
-        } else {
-            &address
-        };
+        // Parse the address using url crate for proper validation
+        let parsed_url = url::Url::parse(&address).map_err(|_| Error::InvalidArgument {
+            message: "invalid address format".to_string(),
+        })?;
 
-        let port = if let Some(idx) = host.rfind(':') {
-            let (_, port_part) = host.split_at(idx);
-            port_part[1..].parse::<u16>().unwrap_or(6379)
-        } else {
-            6379
-        };
+        let scheme = parsed_url.scheme();
+        if scheme != "redis" && scheme != "rediss" {
+            return Err(Error::InvalidArgument {
+                message: "invalid scheme, expected redis:// or rediss://".to_string(),
+            });
+        }
+
+        let host = parsed_url
+            .host_str()
+            .ok_or_else(|| Error::InvalidArgument {
+                message: "missing host in address".to_string(),
+            })?;
+
+        let port = parsed_url.port().unwrap_or(6379);
 
         let addr = format!("{}:{}", host, port);
         let stream = tokio::net::TcpStream::connect(&addr)
@@ -112,7 +119,8 @@ impl Client {
 
     pub async fn connect<T: AsRef<str>>(addr: T) -> Result<Self> {
         let addr_str = addr.as_ref().to_string();
-        Self::connect_inner(addr_str, None, None, None, false).await
+        let is_tls = addr_str.starts_with("rediss://");
+        Self::connect_inner(addr_str, None, None, None, is_tls).await
     }
 
     pub async fn ping(&mut self) -> Result<Bytes> {
