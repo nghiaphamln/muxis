@@ -1,6 +1,6 @@
 [package]
 name = "muxis-cluster"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Muxis Contributors"]
 description = "Cluster support for Muxis Redis client"
@@ -8,8 +8,8 @@ repository = "https://github.com/nexorion/muxis"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-muxis-core = { path = "../muxis-core" }
-muxis-proto = { path = "../muxis-proto" }
+muxis-core = { path = "../muxis-core", version = "0.2.0" }
+muxis-proto = { path = "../muxis-proto", version = "0.2.0" }
 tokio = { version = "1.49", features = ["full"] }
 tracing = "0.1.44"
 thiserror = "2.0"

@@ -4,7 +4,7 @@ A high-performance Redis client for Rust with multiplexing, auto standalone/clus
 
 ## Features
 
-### Current (v0.1.0)
+### Current (v0.2.0)
 
 - **Complete RESP2 Protocol**: Full implementation of Redis Serialization Protocol version 2
 - **Multiplexed Connections**: Handle multiple concurrent requests over a single TCP connection
@@ -35,7 +35,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-muxis = "0.1.0"
+muxis = "0.2.0"
 ```
 
 ## Quick Start
@@ -284,7 +284,7 @@ See [AGENTS.md](AGENTS.md) for detailed development guidelines.
 
 ## Project Status
 
-Muxis is in active development. Version 0.1.0 provides a solid foundation with RESP2 protocol support and multiplexed connections for standalone Redis servers.
+Muxis is in active development. Version 0.2.0 provides a solid foundation with RESP2 protocol support and multiplexed connections for standalone Redis servers.
 
 Current status:
 - Phase 0: Repository scaffolding - COMPLETE

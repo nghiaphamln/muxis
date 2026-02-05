@@ -370,7 +370,7 @@ dependencies = [
 
 [[package]]
 name = "muxis-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "muxis-cluster",
@@ -386,7 +386,7 @@ dependencies = [
 
 [[package]]
 name = "muxis-cluster"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "muxis-core",
  "muxis-proto",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "muxis-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -412,7 +412,7 @@ dependencies = [
 
 [[package]]
 name = "muxis-proto"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "thiserror",
@@ -421,7 +421,7 @@ dependencies = [
 
 [[package]]
 name = "muxis-test"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "muxis-client",
  "muxis-cluster",

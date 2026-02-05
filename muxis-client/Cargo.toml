@@ -1,6 +1,6 @@
 [package]
 name = "muxis-client"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Muxis Contributors"]
 description = "High-performance Redis client with multiplexing"
@@ -17,9 +17,9 @@ streams = []
 tracing = []
 
 [dependencies]
-muxis-core = { path = "../muxis-core" }
-muxis-cluster = { path = "../muxis-cluster" }
-muxis-proto = { path = "../muxis-proto" }
+muxis-core = { path = "../muxis-core", version = "0.2.0" }
+muxis-cluster = { path = "../muxis-cluster", version = "0.2.0" }
+muxis-proto = { path = "../muxis-proto", version = "0.2.0" }
 tokio = { version = "1.49", features = ["full"] }
 tracing = "0.1.44"
 bytes = "1.11"
