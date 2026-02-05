@@ -30,7 +30,7 @@ async fn main() -> muxis::Result<()> {
 
     // Example 1: Batch operations on same-slot keys using hash tags
     println!("\n2. Batch operations on same-slot keys...");
-    
+
     // All these keys map to the same slot because of {user:1000}
     let user_keys = vec![
         ("profile:{user:1000}:name", "Alice"),
@@ -48,36 +48,36 @@ async fn main() -> muxis::Result<()> {
     // Set all values (these go to the same node, can be pipelined)
     println!("   Setting {} keys in batch...", user_keys.len());
     let start = std::time::Instant::now();
-    
+
     // Use futures to execute all SETs concurrently
     let mut set_futures = vec![];
     for (key, value) in &user_keys {
         set_futures.push(client.set(key, Bytes::from(*value)));
     }
-    
+
     // Wait for all SETs to complete
     for future in set_futures {
         future.await?;
     }
-    
+
     let duration = start.elapsed();
     println!("   Batch SET completed in {:?}", duration);
 
     // Get all values (pipelined reads)
     println!("   Reading {} keys in batch...", user_keys.len());
     let start = std::time::Instant::now();
-    
+
     let mut get_futures = vec![];
     for (key, _) in &user_keys {
         get_futures.push(client.get(key));
     }
-    
+
     // Wait for all GETs
     let mut results = vec![];
     for future in get_futures {
         results.push(future.await?);
     }
-    
+
     let duration = start.elapsed();
     println!("   Batch GET completed in {:?}", duration);
 
@@ -92,7 +92,7 @@ async fn main() -> muxis::Result<()> {
 
     // Example 2: Compare with sequential operations
     println!("\n3. Comparing batch vs sequential operations...");
-    
+
     let test_keys = vec![
         ("test:{batch:1}:a", "value_a"),
         ("test:{batch:1}:b", "value_b"),
@@ -128,7 +128,7 @@ async fn main() -> muxis::Result<()> {
 
     // Example 3: Mixed operations on same slot
     println!("\n4. Mixed operations (SET, GET, EXISTS, DEL) on same slot...");
-    
+
     let mixed_keys = vec![
         "session:{abc123}:token",
         "session:{abc123}:user_id",
@@ -142,43 +142,51 @@ async fn main() -> muxis::Result<()> {
 
     // Concurrent mixed operations
     let start = std::time::Instant::now();
-    
+
     let mut futures = vec![];
-    
+
     // SET operations
     futures.push(tokio::spawn({
         let client = client.clone();
         async move {
-            client.set("session:{abc123}:token", Bytes::from("xyz789")).await
+            client
+                .set("session:{abc123}:token", Bytes::from("xyz789"))
+                .await
         }
     }));
-    
+
     futures.push(tokio::spawn({
         let client = client.clone();
         async move {
-            client.set("session:{abc123}:user_id", Bytes::from("12345")).await
+            client
+                .set("session:{abc123}:user_id", Bytes::from("12345"))
+                .await
         }
     }));
-    
+
     futures.push(tokio::spawn({
         let client = client.clone();
         async move {
-            client.set("session:{abc123}:expires", Bytes::from("3600")).await
+            client
+                .set("session:{abc123}:expires", Bytes::from("3600"))
+                .await
         }
     }));
-    
+
     futures.push(tokio::spawn({
         let client = client.clone();
         async move {
-            client.set("session:{abc123}:device", Bytes::from("mobile")).await
+            client
+                .set("session:{abc123}:device", Bytes::from("mobile"))
+                .await
         }
     }));
-    
+
     // Wait for all operations
     for future in futures {
         future.await.unwrap()?;
     }
-    
+
     let duration = start.elapsed();
     println!("   All operations completed in {:?}", duration);
 
@@ -191,23 +199,24 @@ async fn main() -> muxis::Result<()> {
 
     // Clean up all keys
     println!("\n5. Cleaning up test data...");
-    
-    let all_keys: Vec<_> = user_keys.iter()
+
+    let all_keys: Vec<_> = user_keys
+        .iter()
         .map(|(k, _)| *k)
         .chain(test_keys.iter().map(|(k, _)| *k))
         .chain(mixed_keys.iter().copied())
         .collect();
-    
+
     let mut del_futures = vec![];
     for key in &all_keys {
         del_futures.push(client.del(key));
     }
-    
+
     let mut total_deleted = 0;
     for future in del_futures {
         total_deleted += future.await?;
     }
-    
+
     println!("   Deleted {} keys", total_deleted);
 
     println!("\n=== Example Complete ===");

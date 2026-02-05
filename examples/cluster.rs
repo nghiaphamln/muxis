@@ -44,9 +44,7 @@ async fn main() -> muxis::Result<()> {
 
     // SET operation
     println!("   Setting key 'user:1000:name' = 'Alice'");
-    client
-        .set("user:1000:name", Bytes::from("Alice"))
-        .await?;
+    client.set("user:1000:name", Bytes::from("Alice")).await?;
 
     // GET operation
     println!("   Getting key 'user:1000:name'");
@@ -112,7 +110,9 @@ async fn main() -> muxis::Result<()> {
     // Test a few operations to demonstrate redirect handling works
     for i in 0..5 {
         let key = format!("test:key:{}", i);
-        client.set(&key, Bytes::from(format!("value_{}", i))).await?;
+        client
+            .set(&key, Bytes::from(format!("value_{}", i)))
+            .await?;
         client.get(&key).await?;
         client.del(&key).await?;
     }
@@ -136,7 +136,10 @@ async fn main() -> muxis::Result<()> {
 
     match ClusterClient::validate_same_slot(&same_slot_keys) {
         Ok(slot) => {
-            println!("   Success! All keys with {{myapp}} hash tag map to slot: {}", slot);
+            println!(
+                "   Success! All keys with {{myapp}} hash tag map to slot: {}",
+                slot
+            );
 
             // Now these operations would work in a multi-key context
             for key in &same_slot_keys {

@@ -77,10 +77,7 @@ fn bench_cluster_get(c: &mut Criterion) {
             let key = format!("bench:get:{}", size);
 
             b.to_async(&rt).iter(|| async {
-                client
-                    .get(black_box(&key))
-                    .await
-                    .expect("GET failed");
+                client.get(black_box(&key)).await.expect("GET failed");
             });
         });
     }
@@ -96,18 +93,15 @@ fn bench_cluster_del(c: &mut Criterion) {
     c.bench_function("cluster_del", |b| {
         b.to_async(&rt).iter(|| async {
             let key = "bench:del:test";
-            
+
             // SET before each DEL
             client
                 .set(key, Bytes::from("value"))
                 .await
                 .expect("SET failed");
-            
+
             // Benchmark the DEL
-            client
-                .del(black_box(key))
-                .await
-                .expect("DEL failed");
+            client.del(black_box(key)).await.expect("DEL failed");
         });
     });
 }
@@ -129,10 +123,7 @@ fn bench_cluster_exists(c: &mut Criterion) {
         let key = "bench:exists:test";
 
         b.to_async(&rt).iter(|| async {
-            client
-                .exists(black_box(key))
-                .await
-                .expect("EXISTS failed");
+            client.exists(black_box(key)).await.expect("EXISTS failed");
         });
     });
 }
@@ -145,24 +136,18 @@ fn bench_slot_calculation(c: &mut Criterion) {
 
     // Short key
     group.bench_function("short_key", |b| {
-        b.iter(|| {
-            key_slot(black_box("key"))
-        });
+        b.iter(|| key_slot(black_box("key")));
     });
 
     // Long key
     group.bench_function("long_key", |b| {
         let key = "a".repeat(100);
-        b.iter(|| {
-            key_slot(black_box(&key))
-        });
+        b.iter(|| key_slot(black_box(&key)));
     });
 
     // Key with hash tag
     group.bench_function("hash_tag", |b| {
-        b.iter(|| {
-            key_slot(black_box("user:{12345}:profile"))
-        });
+        b.iter(|| key_slot(black_box("user:{12345}:profile")));
     });
 
     group.finish();
@@ -175,9 +160,7 @@ fn bench_validate_same_slot(c: &mut Criterion) {
     // 2 keys
     group.bench_function("2_keys", |b| {
         let keys = vec!["{tag}:key1", "{tag}:key2"];
-        b.iter(|| {
-            ClusterClient::validate_same_slot(black_box(&keys))
-        });
+        b.iter(|| ClusterClient::validate_same_slot(black_box(&keys)));
     });
 
     // 5 keys
@@ -189,20 +172,24 @@ fn bench_validate_same_slot(c: &mut Criterion) {
             "{tag}:key4",
             "{tag}:key5",
         ];
-        b.iter(|| {
-            ClusterClient::validate_same_slot(black_box(&keys))
-        });
+        b.iter(|| ClusterClient::validate_same_slot(black_box(&keys)));
     });
 
     // 10 keys
     group.bench_function("10_keys", |b| {
         let keys = vec![
-            "{tag}:key1", "{tag}:key2", "{tag}:key3", "{tag}:key4", "{tag}:key5",
-            "{tag}:key6", "{tag}:key7", "{tag}:key8", "{tag}:key9", "{tag}:key10",
+            "{tag}:key1",
+            "{tag}:key2",
+            "{tag}:key3",
+            "{tag}:key4",
+            "{tag}:key5",
+            "{tag}:key6",
+            "{tag}:key7",
+            "{tag}:key8",
+            "{tag}:key9",
+            "{tag}:key10",
         ];
-        b.iter(|| {
-            ClusterClient::validate_same_slot(black_box(&keys))
-        });
+        b.iter(|| ClusterClient::validate_same_slot(black_box(&keys)));
     });
 
     group.finish();
@@ -254,23 +241,17 @@ fn bench_topology_operations(c: &mut Criterion) {
     let client = create_client();
 
     c.bench_function("node_count", |b| {
-        b.to_async(&rt).iter(|| async {
-            client.node_count().await
-        });
+        b.to_async(&rt).iter(|| async { client.node_count().await });
     });
 
     c.bench_function("is_fully_covered", |b| {
-        b.to_async(&rt).iter(|| async {
-            client.is_fully_covered().await
-        });
+        b.to_async(&rt)
+            .iter(|| async { client.is_fully_covered().await });
     });
 
     c.bench_function("refresh_topology", |b| {
         b.to_async(&rt).iter(|| async {
-            client
-                .refresh_topology()
-                .await
-                .expect("refresh failed");
+            client.refresh_topology().await.expect("refresh failed");
         });
     });
 }

@@ -201,7 +201,7 @@ impl ClusterClient {
     /// # #[cfg(feature = "cluster")]
     /// # {
     /// use muxis::cluster::ClusterClient;
-    /// 
+    ///
     /// // Keys with same hash tag will map to same slot
     /// let keys = vec!["user:{123}:profile", "user:{123}:settings"];
     /// let result = ClusterClient::validate_same_slot(&keys);
@@ -287,7 +287,10 @@ impl ClusterClient {
                     let error = parse_redis_error(message.as_bytes());
 
                     match error {
-                        Error::Moved { slot: _new_slot, address: _ } => {
+                        Error::Moved {
+                            slot: _new_slot,
+                            address: _,
+                        } => {
                             // MOVED redirect: permanent slot migration
                             redirects += 1;
                             if redirects > MAX_REDIRECTS {
@@ -305,7 +308,10 @@ impl ClusterClient {
                             // Retry with updated topology (loop will use new_slot implicitly)
                             continue;
                         }
-                        Error::Ask { slot: _ask_slot, address } => {
+                        Error::Ask {
+                            slot: _ask_slot,
+                            address,
+                        } => {
                             // ASK redirect: temporary migration, use ASKING
                             redirects += 1;
                             if redirects > MAX_REDIRECTS {
@@ -384,7 +390,7 @@ impl ClusterClient {
     /// # use muxis::cluster::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
-    /// 
+    ///
     /// if let Some(value) = client.get("mykey").await? {
     ///     println!("Value: {:?}", value);
     /// }
@@ -495,7 +501,7 @@ impl ClusterClient {
     /// # use muxis::cluster::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
-    /// 
+    ///
     /// if client.exists("mykey").await? {
     ///     println!("Key exists");
     /// }
@@ -649,7 +655,7 @@ mod tests {
         let keys = vec!["key1", "key2"];
         let slot1 = key_slot("key1");
         let slot2 = key_slot("key2");
-        
+
         let result = ClusterClient::validate_same_slot(&keys);
         if slot1 != slot2 {
             // Should return CrossSlot error
