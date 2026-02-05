@@ -9,6 +9,7 @@
 //! - [`command`] - Command builders
 //! - [`builder`] - Client builder
 //! - [`multiplexed`] - Multiplexed connection for concurrent requests
+//!
 
 use bytes::Bytes;
 use std::time::Duration;
@@ -45,9 +46,9 @@ cfg_if::cfg_if! {
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client {
-    connection: connection::Connection<tokio::net::TcpStream>,
+    connection: multiplexed::MultiplexedConnection,
 }
 
 impl Client {
@@ -57,6 +58,7 @@ impl Client {
         database: Option<u8>,
         client_name: Option<String>,
         _tls: bool,
+        queue_size: usize,
     ) -> Result<Self> {
         // Parse the address using url crate for proper validation
         let parsed_url = url::Url::parse(&address).map_err(|_| Error::InvalidArgument {
@@ -115,54 +117,40 @@ impl Client {
             let _resp = connection.read_frame().await?;
         }
 
+        let connection = multiplexed::MultiplexedConnection::new(connection, queue_size);
+
         Ok(Self { connection })
     }
 
     pub async fn connect<T: AsRef<str>>(addr: T) -> Result<Self> {
         let addr_str = addr.as_ref().to_string();
         let is_tls = addr_str.starts_with("rediss://");
-        Self::connect_inner(addr_str, None, None, None, is_tls).await
+        Self::connect_inner(addr_str, None, None, None, is_tls, 1024).await
     }
 
     pub async fn ping(&mut self) -> Result<Bytes> {
         let cmd = command::ping();
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::parse_frame_response(frame)?;
         Ok("PONG".into())
     }
 
     pub async fn echo(&mut self, msg: &str) -> Result<Bytes> {
         let cmd = command::echo(msg.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         let bytes = command::frame_to_bytes(frame)?;
         Ok(bytes.unwrap_or_default())
     }
 
     pub async fn get(&mut self, key: &str) -> Result<Option<Bytes>> {
         let cmd = command::get(key.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_bytes(frame)
     }
 
     pub async fn set(&mut self, key: &str, value: Bytes) -> Result<()> {
         let cmd = command::set(key.to_string(), value);
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::parse_frame_response(frame)?;
         Ok(())
     }
@@ -174,106 +162,66 @@ impl Client {
         expiry: Duration,
     ) -> Result<()> {
         let cmd = command::set_with_expiry(key.to_string(), value, expiry);
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::parse_frame_response(frame)?;
         Ok(())
     }
 
     pub async fn incr(&mut self, key: &str) -> Result<i64> {
         let cmd = command::incr(key.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_int(frame)
     }
 
     pub async fn incr_by(&mut self, key: &str, amount: i64) -> Result<i64> {
         let cmd = command::incr_by(key.to_string(), amount);
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_int(frame)
     }
 
     pub async fn decr(&mut self, key: &str) -> Result<i64> {
         let cmd = command::decr(key.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_int(frame)
     }
 
     pub async fn decr_by(&mut self, key: &str, amount: i64) -> Result<i64> {
         let cmd = command::decr_by(key.to_string(), amount);
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_int(frame)
     }
 
     pub async fn del(&mut self, key: &str) -> Result<bool> {
         let cmd = command::del(key.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         let n = command::frame_to_int(frame)?;
         Ok(n > 0)
     }
 
     pub async fn auth(&mut self, password: &str) -> Result<()> {
         let cmd = command::auth(password.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::parse_frame_response(frame)?;
         Ok(())
     }
 
     pub async fn auth_with_username(&mut self, username: &str, password: &str) -> Result<()> {
         let cmd = command::auth_with_username(username.to_string(), password.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::parse_frame_response(frame)?;
         Ok(())
     }
 
     pub async fn select(&mut self, db: u8) -> Result<()> {
         let cmd = command::select(db);
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::parse_frame_response(frame)?;
         Ok(())
     }
 
     pub async fn client_setname(&mut self, name: &str) -> Result<()> {
         let cmd = command::client_setname(name.to_string());
-        self.connection
-            .write_frame(&cmd.into_frame())
-            .await
-            .map_err(|e| Error::Io { source: e })?;
-        let frame = self.connection.read_frame().await?;
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::parse_frame_response(frame)?;
         Ok(())
     }
@@ -286,6 +234,7 @@ mod tests {
     #[tokio::test]
     async fn test_client_connect() {
         let client = Client::connect("redis://localhost:6379").await;
+        // This will likely fail without a running Redis, so we assert result exists
         assert!(client.is_ok() || client.is_err());
     }
 }

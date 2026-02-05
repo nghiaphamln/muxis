@@ -31,6 +31,7 @@ pub struct ClientBuilder {
     read_timeout: Option<Duration>,
     write_timeout: Option<Duration>,
     tls: bool,
+    queue_size: Option<usize>,
 }
 
 impl ClientBuilder {
@@ -139,6 +140,17 @@ impl ClientBuilder {
         self
     }
 
+    /// Sets the maximum number of pending requests in the queue.
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - Maximum number of requests (default: 1024)
+    #[inline]
+    pub fn queue_size(mut self, size: usize) -> Self {
+        self.queue_size = Some(size);
+        self
+    }
+
     /// Builds the [`Client`] connection.
     ///
     /// # Errors
@@ -157,6 +169,7 @@ impl ClientBuilder {
             self.database,
             self.client_name,
             self.tls,
+            self.queue_size.unwrap_or(1024),
         )
         .await?;
 
