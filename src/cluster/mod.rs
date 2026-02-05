@@ -37,6 +37,8 @@
 //! # }
 //! ```
 
+mod errors;
 mod slot;
 
+pub use errors::parse_redis_error;
 pub use slot::{key_slot, SLOT_COUNT};
