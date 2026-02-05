@@ -5,7 +5,120 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-02-05
+
+### Phase 3: Standalone API Completeness
+
+This release completes the standalone Redis API with 75 commands across all major data structures.
+
+### Added
+
+#### String Commands (7 commands)
+- `MGET` - Get multiple values
+- `MSET` - Set multiple key-value pairs
+- `SETNX` - Set if not exists
+- `SETEX` - Set with expiration
+- `GETDEL` - Get and delete
+- `APPEND` - Append to string
+- `STRLEN` - Get string length
+
+#### Key Commands (8 commands)
+- `EXISTS` - Check if key exists
+- `TYPE` - Get key type
+- `EXPIRE` - Set expiration in seconds
+- `EXPIREAT` - Set expiration at timestamp
+- `TTL` - Get time to live
+- `PERSIST` - Remove expiration
+- `RENAME` - Rename key
+- `SCAN` - Iterate keys
+
+#### Hash Commands (13 commands)
+- `HSET` - Set hash field
+- `HGET` - Get hash field
+- `HMSET` - Set multiple hash fields
+- `HMGET` - Get multiple hash fields
+- `HGETALL` - Get all hash fields and values
+- `HDEL` - Delete hash fields
+- `HEXISTS` - Check if hash field exists
+- `HLEN` - Get hash length
+- `HKEYS` - Get all hash keys
+- `HVALS` - Get all hash values
+- `HINCRBY` - Increment hash field by integer
+- `HINCRBYFLOAT` - Increment hash field by float
+- `HSETNX` - Set hash field if not exists
+
+#### List Commands (14 commands)
+- `LPUSH` - Push to list head
+- `RPUSH` - Push to list tail
+- `LPOP` - Pop from list head
+- `RPOP` - Pop from list tail
+- `LLEN` - Get list length
+- `LRANGE` - Get range of elements
+- `LINDEX` - Get element by index
+- `LSET` - Set element by index
+- `LREM` - Remove elements
+- `LTRIM` - Trim list
+- `RPOPLPUSH` - Pop from one list, push to another
+- `BLPOP` - Blocking pop from list head
+- `BRPOP` - Blocking pop from list tail
+- `LPOS` - Find position of element
+
+#### Set Commands (13 commands)
+- `SADD` - Add members to set
+- `SREM` - Remove members from set
+- `SPOP` - Pop random member
+- `SMEMBERS` - Get all members
+- `SISMEMBER` - Check if member exists
+- `SCARD` - Get set cardinality
+- `SRANDMEMBER` - Get random member(s)
+- `SDIFF` - Set difference
+- `SINTER` - Set intersection
+- `SUNION` - Set union
+- `SDIFFSTORE` - Store set difference
+- `SINTERSTORE` - Store set intersection
+- `SUNIONSTORE` - Store set union
+
+#### Sorted Set Commands (20 commands)
+- `ZADD` - Add members with scores
+- `ZREM` - Remove members
+- `ZRANGE` - Get members by rank range
+- `ZRANGEBYSCORE` - Get members by score range
+- `ZRANK` - Get member rank
+- `ZSCORE` - Get member score
+- `ZCARD` - Get sorted set cardinality
+- `ZCOUNT` - Count members in score range
+- `ZINCRBY` - Increment member score
+- `ZREVRANGE` - Get members in reverse order
+- `ZREVRANK` - Get reverse rank
+- `ZREMRANGEBYRANK` - Remove by rank range
+- `ZREMRANGEBYSCORE` - Remove by score range
+- `ZPOPMIN` - Pop member with lowest score
+- `ZPOPMAX` - Pop member with highest score
+- `BZPOPMIN` - Blocking pop min
+- `BZPOPMAX` - Blocking pop max
+- `ZLEXCOUNT` - Count by lexicographical range
+- `ZRANGEBYLEX` - Get by lexicographical range
+- `ZREMRANGEBYLEX` - Remove by lexicographical range
+
+### Improved
+
+- **Test Coverage**: Increased from 60 to 192 total tests
+  - 111 unit tests (was 53)
+  - 81 integration tests (new)
+  - 7 documentation tests
+- **Code Quality**: Zero clippy warnings, 100% public API documentation
+- **Type Safety**: Added helper functions for parsing optional values and complex responses
+  - `frame_to_optional_int()` for nullable integer responses
+  - `frame_to_optional_float()` for nullable float responses
+  - `frame_to_zpop_result()` for sorted set pop operations
+  - `frame_to_bzpop_result()` for blocking sorted set operations
+
+### Technical Details
+
+- All commands implemented in `src/core/command.rs` with builder pattern
+- Client methods in `src/core/mod.rs` with full documentation
+- Integration tests for each command category in `tests/` directory
+- Lifetime issues resolved using `impl Into<Bytes>` pattern for flexible API
 
 ## [0.2.0] - 2026-02-05
 
