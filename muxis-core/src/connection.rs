@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use muxis_proto::codec::{Decoder, Encoder};
 use muxis_proto::frame::Frame;
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 
 pub struct Connection<S> {
     stream: S,
@@ -42,47 +42,29 @@ where
     pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), std::io::Error> {
         self.encoder.encode(frame);
         let data = self.encoder.take();
-        let mut offset = 0;
-        while offset < data.len() {
-            match Pin::new(&mut self.stream).poll_write(
-                &mut Context::from_waker(futures::task::noop_waker_ref()),
-                &data[offset..],
-            ) {
-                Poll::Ready(Ok(n)) => {
-                    if n == 0 {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::WriteZero,
-                            "failed to write",
-                        ));
-                    }
-                    offset += n;
-                }
-                Poll::Ready(Err(e)) => return Err(e),
-                Poll::Pending => {
-                    if let Some(timeout) = self.write_timeout {
-                        let _ =
-                            tokio::time::timeout(timeout, futures::future::pending::<()>()).await;
-                    }
-                }
-            }
-        }
+        self.stream.write_all(&data).await?;
         Ok(())
     }
 
     pub async fn read_frame(&mut self) -> Result<Frame, crate::Error> {
         loop {
-            if let Some(frame) = self
-                .decoder
-                .decode()
-                .map_err(|e| crate::Error::Protocol { message: e })?
-            {
-                return Ok(frame);
-            }
-
-            if !self.decoder.has_decodable_frame() {
-                return Err(crate::Error::Protocol {
-                    message: "invalid frame".to_string(),
-                });
+            match self.decoder.decode() {
+                Ok(Some(frame)) => return Ok(frame),
+                Ok(None) => {
+                    let mut buf = vec![0u8; 4096];
+                    let n = self.stream.read(&mut buf).await.map_err(|e| {
+                        std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
+                    })?;
+                    if n == 0 {
+                        return Err(crate::Error::Protocol {
+                            message: "connection closed".to_string(),
+                        });
+                    }
+                    self.decoder.append(&buf[..n]);
+                }
+                Err(e) => {
+                    return Err(crate::Error::Protocol { message: e });
+                }
             }
         }
     }
@@ -113,7 +95,9 @@ where
         let this = self.get_mut();
         match Pin::new(&mut this.stream).poll_read(cx, buf) {
             Poll::Ready(Ok(())) => {
-                this.decoder.append(buf.filled());
+                if !buf.filled().is_empty() {
+                    this.decoder.append(buf.filled());
+                }
                 Poll::Ready(Ok(()))
             }
             Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
@@ -146,15 +130,19 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
     use tokio::net::TcpListener;
+    use tokio::sync::Barrier;
 
     #[tokio::test]
-    #[ignore]
     async fn test_connection_ping_pong() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
+        let barrier = Arc::new(Barrier::new(2));
 
-        let server = async {
+        let barrier_cloned = barrier.clone();
+        let server = async move {
+            barrier_cloned.wait().await;
             let (stream, _) = listener.accept().await.unwrap();
             let mut conn = Connection::new(stream);
             let frame = conn.read_frame().await.unwrap();
@@ -168,9 +156,9 @@ mod tests {
         };
 
         let client = async {
+            barrier.wait().await;
             let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
             let mut conn = Connection::new(stream);
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             conn.write_frame(&Frame::Array(vec![Frame::BulkString(Some("PING".into()))]))
                 .await
                 .unwrap();
