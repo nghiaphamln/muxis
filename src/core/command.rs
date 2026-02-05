@@ -207,6 +207,58 @@ pub fn strlen(key: impl Into<Bytes>) -> Cmd {
     Cmd::new("STRLEN").arg(key)
 }
 
+/// Creates an EXISTS command.
+#[inline]
+pub fn exists(keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("EXISTS");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
+/// Creates a TYPE command.
+#[inline]
+pub fn key_type(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("TYPE").arg(key)
+}
+
+/// Creates an EXPIRE command.
+#[inline]
+pub fn expire(key: impl Into<Bytes>, seconds: u64) -> Cmd {
+    Cmd::new("EXPIRE").arg(key).arg(seconds.to_string())
+}
+
+/// Creates an EXPIREAT command.
+#[inline]
+pub fn expireat(key: impl Into<Bytes>, timestamp: u64) -> Cmd {
+    Cmd::new("EXPIREAT").arg(key).arg(timestamp.to_string())
+}
+
+/// Creates a TTL command.
+#[inline]
+pub fn ttl(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("TTL").arg(key)
+}
+
+/// Creates a PERSIST command.
+#[inline]
+pub fn persist(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("PERSIST").arg(key)
+}
+
+/// Creates a RENAME command.
+#[inline]
+pub fn rename(key: impl Into<Bytes>, newkey: impl Into<Bytes>) -> Cmd {
+    Cmd::new("RENAME").arg(key).arg(newkey)
+}
+
+/// Creates a SCAN command.
+#[inline]
+pub fn scan(cursor: u64) -> Cmd {
+    Cmd::new("SCAN").arg(cursor.to_string())
+}
+
 /// Parses a frame as a Redis response.
 #[inline]
 pub fn parse_frame_response(frame: Frame) -> Result<Frame, crate::Error> {
@@ -299,6 +351,67 @@ pub fn frame_to_vec_bytes(frame: Frame) -> Result<Vec<Option<Bytes>>, crate::Err
         }),
         _ => Err(crate::Error::Protocol {
             message: "expected array frame".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame to a string.
+#[inline]
+pub fn frame_to_string(frame: Frame) -> Result<String, crate::Error> {
+    match frame {
+        Frame::SimpleString(s) | Frame::Error(s) => Ok(String::from_utf8_lossy(&s).into_owned()),
+        Frame::BulkString(Some(b)) => Ok(String::from_utf8_lossy(&b).into_owned()),
+        Frame::BulkString(None) | Frame::Null => Ok(String::new()),
+        Frame::Integer(i) => Ok(i.to_string()),
+        _ => Err(crate::Error::Protocol {
+            message: "unexpected frame type".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame array to a SCAN response (cursor, keys).
+#[inline]
+pub fn frame_to_scan_response(frame: Frame) -> Result<(u64, Vec<String>), crate::Error> {
+    match frame {
+        Frame::Array(mut arr) => {
+            if arr.len() != 2 {
+                return Err(crate::Error::Protocol {
+                    message: "SCAN response must have 2 elements".to_string(),
+                });
+            }
+
+            let keys_frame = arr.pop().unwrap();
+            let cursor_frame = arr.pop().unwrap();
+
+            let cursor_str = frame_to_string(cursor_frame)?;
+            let cursor = cursor_str
+                .parse::<u64>()
+                .map_err(|_| crate::Error::Protocol {
+                    message: "invalid cursor value".to_string(),
+                })?;
+
+            let keys = match keys_frame {
+                Frame::Array(key_arr) => {
+                    let mut keys = Vec::with_capacity(key_arr.len());
+                    for key_frame in key_arr {
+                        keys.push(frame_to_string(key_frame)?);
+                    }
+                    keys
+                }
+                _ => {
+                    return Err(crate::Error::Protocol {
+                        message: "SCAN keys must be an array".to_string(),
+                    })
+                }
+            };
+
+            Ok((cursor, keys))
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "expected array frame for SCAN".to_string(),
         }),
     }
 }
@@ -497,5 +610,121 @@ mod tests {
         assert_eq!(result[0], Some(Bytes::from("value1")));
         assert_eq!(result[1], None);
         assert_eq!(result[2], Some(Bytes::from("value3")));
+    }
+
+    #[test]
+    fn test_exists_cmd() {
+        let cmd = exists(vec!["key1".to_string(), "key2".to_string()]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("EXISTS".into())),
+                Frame::BulkString(Some("key1".into())),
+                Frame::BulkString(Some("key2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_key_type_cmd() {
+        let cmd = key_type("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("TYPE".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_expire_cmd() {
+        let cmd = expire("key", 60);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("EXPIRE".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("60".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_expireat_cmd() {
+        let cmd = expireat("key", 1735689600);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("EXPIREAT".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("1735689600".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_ttl_cmd() {
+        let cmd = ttl("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("TTL".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_persist_cmd() {
+        let cmd = persist("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("PERSIST".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_rename_cmd() {
+        let cmd = rename("oldkey", "newkey");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("RENAME".into())),
+                Frame::BulkString(Some("oldkey".into())),
+                Frame::BulkString(Some("newkey".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_scan_cmd() {
+        let cmd = scan(0);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SCAN".into())),
+                Frame::BulkString(Some("0".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_frame_to_scan_response() {
+        let frame = Frame::Array(vec![
+            Frame::BulkString(Some("10".into())),
+            Frame::Array(vec![
+                Frame::BulkString(Some("key1".into())),
+                Frame::BulkString(Some("key2".into())),
+            ]),
+        ]);
+        let (cursor, keys) = frame_to_scan_response(frame).unwrap();
+        assert_eq!(cursor, 10);
+        assert_eq!(keys.len(), 2);
+        assert_eq!(keys[0], "key1");
+        assert_eq!(keys[1], "key2");
     }
 }

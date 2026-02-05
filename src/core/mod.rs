@@ -554,6 +554,250 @@ impl Client {
         let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_int(frame)
     }
+
+    /// Checks if one or more keys exist (EXISTS).
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - Slice of key names to check.
+    ///
+    /// # Returns
+    ///
+    /// The number of keys that exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("key1", Bytes::from("value1")).await?;
+    /// let count = client.exists(&["key1", "key2", "key3"]).await?;
+    /// assert_eq!(count, 1);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn exists(&mut self, keys: &[&str]) -> Result<i64> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::exists(keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Returns the type of value stored at key (TYPE).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to check.
+    ///
+    /// # Returns
+    ///
+    /// The type as a string: "string", "list", "set", "zset", "hash", "stream", or "none".
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("mykey", Bytes::from("value")).await?;
+    /// let key_type = client.key_type("mykey").await?;
+    /// assert_eq!(key_type, "string");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn key_type(&mut self, key: &str) -> Result<String> {
+        let cmd = command::key_type(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_string(frame)
+    }
+
+    /// Sets a timeout on a key in seconds (EXPIRE).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to set expiration on.
+    /// * `seconds` - Expiration time in seconds.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the timeout was set, `false` if the key does not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("mykey", Bytes::from("value")).await?;
+    /// let was_set = client.expire("mykey", 60).await?;
+    /// assert!(was_set);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn expire(&mut self, key: &str, seconds: u64) -> Result<bool> {
+        let cmd = command::expire(key.to_string(), seconds);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
+
+    /// Sets an absolute Unix timestamp expiration on a key (EXPIREAT).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to set expiration on.
+    /// * `timestamp` - Unix timestamp in seconds.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the timeout was set, `false` if the key does not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("mykey", Bytes::from("value")).await?;
+    /// let timestamp = 1735689600; // Some future timestamp
+    /// let was_set = client.expireat("mykey", timestamp).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn expireat(&mut self, key: &str, timestamp: u64) -> Result<bool> {
+        let cmd = command::expireat(key.to_string(), timestamp);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
+
+    /// Returns the remaining time to live of a key in seconds (TTL).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to check.
+    ///
+    /// # Returns
+    ///
+    /// TTL in seconds, -2 if the key does not exist, -1 if the key has no expiration.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.setex("mykey", 60, Bytes::from("value")).await?;
+    /// let ttl = client.ttl("mykey").await?;
+    /// assert!(ttl > 0 && ttl <= 60);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn ttl(&mut self, key: &str) -> Result<i64> {
+        let cmd = command::ttl(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Removes the expiration from a key (PERSIST).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to persist.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the expiration was removed, `false` if the key does not exist or has no expiration.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.setex("mykey", 60, Bytes::from("value")).await?;
+    /// let was_persisted = client.persist("mykey").await?;
+    /// assert!(was_persisted);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn persist(&mut self, key: &str) -> Result<bool> {
+        let cmd = command::persist(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
+
+    /// Renames a key (RENAME).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to rename.
+    /// * `newkey` - The new key name.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the key does not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("oldkey", Bytes::from("value")).await?;
+    /// client.rename("oldkey", "newkey").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn rename(&mut self, key: &str, newkey: &str) -> Result<()> {
+        let cmd = command::rename(key.to_string(), newkey.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::parse_frame_response(frame)?;
+        Ok(())
+    }
+
+    /// Iterates the set of keys in the database using a cursor (SCAN).
+    ///
+    /// # Arguments
+    ///
+    /// * `cursor` - The cursor value (use 0 to start iteration).
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (next_cursor, keys). When next_cursor is 0, the iteration is complete.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let mut cursor = 0;
+    /// loop {
+    ///     let (next_cursor, keys) = client.scan(cursor).await?;
+    ///     for key in keys {
+    ///         println!("Key: {}", key);
+    ///     }
+    ///     cursor = next_cursor;
+    ///     if cursor == 0 {
+    ///         break;
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn scan(&mut self, cursor: u64) -> Result<(u64, Vec<String>)> {
+        let cmd = command::scan(cursor);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_scan_response(frame)
+    }
 }
 
 #[cfg(test)]
