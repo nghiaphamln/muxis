@@ -8,7 +8,9 @@
 //! - [`encoder`] - Frame encoding to bytes
 //! - [`decoder`] - Streaming frame decoder from bytes
 
+/// Streaming frame decoder.
 pub mod decoder;
+/// Frame encoder.
 pub mod encoder;
 
 pub use decoder::Decoder;

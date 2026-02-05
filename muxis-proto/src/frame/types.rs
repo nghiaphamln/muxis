@@ -11,11 +11,17 @@ use bytes::Bytes;
 /// - Null: NULL value
 #[derive(Debug, Clone, PartialEq)]
 pub enum Frame {
+    /// Simple string (+OK).
     SimpleString(Vec<u8>),
+    /// Error (-ERR).
     Error(Vec<u8>),
+    /// Integer (:1000).
     Integer(i64),
+    /// Bulk string ($6\r\nfoobar).
     BulkString(Option<Bytes>),
+    /// Array (*2\r\n...).
     Array(Vec<Frame>),
+    /// Null ($-1 or *-1).
     Null,
 }
 
