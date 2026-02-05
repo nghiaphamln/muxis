@@ -259,6 +259,102 @@ pub fn scan(cursor: u64) -> Cmd {
     Cmd::new("SCAN").arg(cursor.to_string())
 }
 
+/// Creates an HSET command.
+#[inline]
+pub fn hset(key: impl Into<Bytes>, field: impl Into<Bytes>, value: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HSET").arg(key).arg(field).arg(value)
+}
+
+/// Creates an HGET command.
+#[inline]
+pub fn hget(key: impl Into<Bytes>, field: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HGET").arg(key).arg(field)
+}
+
+/// Creates an HMSET command.
+#[inline]
+pub fn hmset(key: String, fields: Vec<(String, Bytes)>) -> Cmd {
+    let mut cmd = Cmd::new("HMSET").arg(key);
+    for (field, value) in fields {
+        cmd = cmd.arg(field).arg(value);
+    }
+    cmd
+}
+
+/// Creates an HMGET command.
+#[inline]
+pub fn hmget(key: String, fields: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("HMGET").arg(key);
+    for field in fields {
+        cmd = cmd.arg(field);
+    }
+    cmd
+}
+
+/// Creates an HGETALL command.
+#[inline]
+pub fn hgetall(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HGETALL").arg(key)
+}
+
+/// Creates an HDEL command.
+#[inline]
+pub fn hdel(key: String, fields: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("HDEL").arg(key);
+    for field in fields {
+        cmd = cmd.arg(field);
+    }
+    cmd
+}
+
+/// Creates an HEXISTS command.
+#[inline]
+pub fn hexists(key: impl Into<Bytes>, field: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HEXISTS").arg(key).arg(field)
+}
+
+/// Creates an HLEN command.
+#[inline]
+pub fn hlen(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HLEN").arg(key)
+}
+
+/// Creates an HKEYS command.
+#[inline]
+pub fn hkeys(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HKEYS").arg(key)
+}
+
+/// Creates an HVALS command.
+#[inline]
+pub fn hvals(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HVALS").arg(key)
+}
+
+/// Creates an HINCRBY command.
+#[inline]
+pub fn hincrby(key: impl Into<Bytes>, field: impl Into<Bytes>, increment: i64) -> Cmd {
+    Cmd::new("HINCRBY")
+        .arg(key)
+        .arg(field)
+        .arg(increment.to_string())
+}
+
+/// Creates an HINCRBYFLOAT command.
+#[inline]
+pub fn hincrbyfloat(key: impl Into<Bytes>, field: impl Into<Bytes>, increment: f64) -> Cmd {
+    Cmd::new("HINCRBYFLOAT")
+        .arg(key)
+        .arg(field)
+        .arg(increment.to_string())
+}
+
+/// Creates an HSETNX command.
+#[inline]
+pub fn hsetnx(key: impl Into<Bytes>, field: impl Into<Bytes>, value: impl Into<Bytes>) -> Cmd {
+    Cmd::new("HSETNX").arg(key).arg(field).arg(value)
+}
+
 /// Parses a frame as a Redis response.
 #[inline]
 pub fn parse_frame_response(frame: Frame) -> Result<Frame, crate::Error> {
@@ -412,6 +508,92 @@ pub fn frame_to_scan_response(frame: Frame) -> Result<(u64, Vec<String>), crate:
         }),
         _ => Err(crate::Error::Protocol {
             message: "expected array frame for SCAN".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame array to a vector of strings.
+#[inline]
+pub fn frame_to_vec_string(frame: Frame) -> Result<Vec<String>, crate::Error> {
+    match frame {
+        Frame::Array(arr) => {
+            let mut result = Vec::with_capacity(arr.len());
+            for item in arr {
+                result.push(frame_to_string(item)?);
+            }
+            Ok(result)
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "expected array frame".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame array to a hashmap (HGETALL response).
+#[inline]
+pub fn frame_to_hashmap(
+    frame: Frame,
+) -> Result<std::collections::HashMap<String, Bytes>, crate::Error> {
+    match frame {
+        Frame::Array(arr) => {
+            if arr.len() % 2 != 0 {
+                return Err(crate::Error::Protocol {
+                    message: "HGETALL response must have even number of elements".to_string(),
+                });
+            }
+
+            let mut result = std::collections::HashMap::new();
+            let mut iter = arr.into_iter();
+
+            while let Some(key_frame) = iter.next() {
+                let value_frame = iter.next().unwrap();
+                let key = frame_to_string(key_frame)?;
+                let value = match value_frame {
+                    Frame::BulkString(Some(b)) => b,
+                    Frame::BulkString(None) | Frame::Null => Bytes::new(),
+                    Frame::Error(e) => {
+                        return Err(crate::Error::Server {
+                            message: String::from_utf8_lossy(&e).into_owned(),
+                        })
+                    }
+                    _ => {
+                        return Err(crate::Error::Protocol {
+                            message: "unexpected value frame type".to_string(),
+                        })
+                    }
+                };
+                result.insert(key, value);
+            }
+
+            Ok(result)
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "expected array frame for HGETALL".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame to a float.
+#[inline]
+pub fn frame_to_float(frame: Frame) -> Result<f64, crate::Error> {
+    match frame {
+        Frame::BulkString(Some(b)) => {
+            let s = String::from_utf8_lossy(&b);
+            s.parse::<f64>().map_err(|_| crate::Error::Protocol {
+                message: "invalid float value".to_string(),
+            })
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "expected bulk string for float".to_string(),
         }),
     }
 }
@@ -726,5 +908,217 @@ mod tests {
         assert_eq!(keys.len(), 2);
         assert_eq!(keys[0], "key1");
         assert_eq!(keys[1], "key2");
+    }
+
+    #[test]
+    fn test_hset_cmd() {
+        let cmd = hset("key", "field", "value");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HSET".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field".into())),
+                Frame::BulkString(Some("value".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hget_cmd() {
+        let cmd = hget("key", "field");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HGET".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hmset_cmd() {
+        let cmd = hmset(
+            "key".to_string(),
+            vec![
+                ("field1".to_string(), Bytes::from("value1")),
+                ("field2".to_string(), Bytes::from("value2")),
+            ],
+        );
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HMSET".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field1".into())),
+                Frame::BulkString(Some("value1".into())),
+                Frame::BulkString(Some("field2".into())),
+                Frame::BulkString(Some("value2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hmget_cmd() {
+        let cmd = hmget(
+            "key".to_string(),
+            vec!["field1".to_string(), "field2".to_string()],
+        );
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HMGET".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field1".into())),
+                Frame::BulkString(Some("field2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hgetall_cmd() {
+        let cmd = hgetall("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HGETALL".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hdel_cmd() {
+        let cmd = hdel(
+            "key".to_string(),
+            vec!["field1".to_string(), "field2".to_string()],
+        );
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HDEL".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field1".into())),
+                Frame::BulkString(Some("field2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hexists_cmd() {
+        let cmd = hexists("key", "field");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HEXISTS".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hlen_cmd() {
+        let cmd = hlen("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HLEN".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hkeys_cmd() {
+        let cmd = hkeys("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HKEYS".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hvals_cmd() {
+        let cmd = hvals("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HVALS".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hincrby_cmd() {
+        let cmd = hincrby("key", "field", 5);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HINCRBY".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field".into())),
+                Frame::BulkString(Some("5".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hincrbyfloat_cmd() {
+        let cmd = hincrbyfloat("key", "field", 2.5);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HINCRBYFLOAT".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field".into())),
+                Frame::BulkString(Some("2.5".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_hsetnx_cmd() {
+        let cmd = hsetnx("key", "field", "value");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("HSETNX".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("field".into())),
+                Frame::BulkString(Some("value".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_frame_to_hashmap() {
+        let frame = Frame::Array(vec![
+            Frame::BulkString(Some("field1".into())),
+            Frame::BulkString(Some("value1".into())),
+            Frame::BulkString(Some("field2".into())),
+            Frame::BulkString(Some("value2".into())),
+        ]);
+        let result = frame_to_hashmap(frame).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result.get("field1"), Some(&Bytes::from("value1")));
+        assert_eq!(result.get("field2"), Some(&Bytes::from("value2")));
+    }
+
+    #[test]
+    fn test_frame_to_vec_string() {
+        let frame = Frame::Array(vec![
+            Frame::BulkString(Some("str1".into())),
+            Frame::BulkString(Some("str2".into())),
+        ]);
+        let result = frame_to_vec_string(frame).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0], "str1");
+        assert_eq!(result[1], "str2");
     }
 }

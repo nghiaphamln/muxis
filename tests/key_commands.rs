@@ -8,8 +8,14 @@ async fn test_exists() {
         .await
         .expect("Failed to connect");
 
-    client.set("existkey1", Bytes::from("value1")).await.unwrap();
-    client.set("existkey2", Bytes::from("value2")).await.unwrap();
+    client
+        .set("existkey1", Bytes::from("value1"))
+        .await
+        .unwrap();
+    client
+        .set("existkey2", Bytes::from("value2"))
+        .await
+        .unwrap();
     client.del("existkey3").await.ok();
 
     let count = client
@@ -26,10 +32,7 @@ async fn test_key_type() {
         .await
         .expect("Failed to connect");
 
-    client
-        .set("typekey", Bytes::from("value"))
-        .await
-        .unwrap();
+    client.set("typekey", Bytes::from("value")).await.unwrap();
 
     let key_type = client.key_type("typekey").await.unwrap();
     assert_eq!(key_type, "string");
@@ -45,10 +48,7 @@ async fn test_expire_and_ttl() {
         .await
         .expect("Failed to connect");
 
-    client
-        .set("expirekey", Bytes::from("value"))
-        .await
-        .unwrap();
+    client.set("expirekey", Bytes::from("value")).await.unwrap();
 
     let was_set = client.expire("expirekey", 60).await.unwrap();
     assert!(was_set);
@@ -78,7 +78,10 @@ async fn test_expireat() {
         .as_secs()
         + 60;
 
-    let was_set = client.expireat("expireatkey", future_timestamp).await.unwrap();
+    let was_set = client
+        .expireat("expireatkey", future_timestamp)
+        .await
+        .unwrap();
     assert!(was_set);
 
     let ttl = client.ttl("expireatkey").await.unwrap();

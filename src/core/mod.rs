@@ -798,6 +798,369 @@ impl Client {
         let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_scan_response(frame)
     }
+
+    /// Sets a field in a hash (HSET).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `field` - The field name.
+    /// * `value` - The value to set.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the field was newly created, `false` if it was updated.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.hset("myhash", "field1", Bytes::from("value1")).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hset(&mut self, key: &str, field: &str, value: Bytes) -> Result<bool> {
+        let cmd = command::hset(key.to_string(), field.to_string(), value);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
+
+    /// Gets a field value from a hash (HGET).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `field` - The field name.
+    ///
+    /// # Returns
+    ///
+    /// `Some(Bytes)` if the field exists, or `None` if it does not.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let value = client.hget("myhash", "field1").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hget(&mut self, key: &str, field: &str) -> Result<Option<Bytes>> {
+        let cmd = command::hget(key.to_string(), field.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bytes(frame)
+    }
+
+    /// Sets multiple fields in a hash (HMSET).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `fields` - Slice of (field, value) tuples.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.hmset("myhash", &[
+    ///     ("field1", Bytes::from("value1")),
+    ///     ("field2", Bytes::from("value2")),
+    /// ]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hmset(&mut self, key: &str, fields: &[(&str, Bytes)]) -> Result<()> {
+        let fields_vec = fields
+            .iter()
+            .map(|(f, v)| (f.to_string(), v.clone()))
+            .collect();
+        let cmd = command::hmset(key.to_string(), fields_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::parse_frame_response(frame)?;
+        Ok(())
+    }
+
+    /// Gets multiple field values from a hash (HMGET).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `fields` - Slice of field names.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `Option<Bytes>`, one for each field. `None` for fields that do not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let values = client.hmget("myhash", &["field1", "field2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hmget(&mut self, key: &str, fields: &[&str]) -> Result<Vec<Option<Bytes>>> {
+        let fields_vec = fields.iter().map(|f| f.to_string()).collect();
+        let cmd = command::hmget(key.to_string(), fields_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_bytes(frame)
+    }
+
+    /// Gets all fields and values from a hash (HGETALL).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    ///
+    /// # Returns
+    ///
+    /// A HashMap of field names to values.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let all_fields = client.hgetall("myhash").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hgetall(&mut self, key: &str) -> Result<std::collections::HashMap<String, Bytes>> {
+        let cmd = command::hgetall(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_hashmap(frame)
+    }
+
+    /// Deletes one or more fields from a hash (HDEL).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `fields` - Slice of field names to delete.
+    ///
+    /// # Returns
+    ///
+    /// The number of fields that were deleted.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let count = client.hdel("myhash", &["field1", "field2"]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hdel(&mut self, key: &str, fields: &[&str]) -> Result<i64> {
+        let fields_vec = fields.iter().map(|f| f.to_string()).collect();
+        let cmd = command::hdel(key.to_string(), fields_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Checks if a field exists in a hash (HEXISTS).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `field` - The field name.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the field exists, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let exists = client.hexists("myhash", "field1").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hexists(&mut self, key: &str, field: &str) -> Result<bool> {
+        let cmd = command::hexists(key.to_string(), field.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
+
+    /// Gets the number of fields in a hash (HLEN).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    ///
+    /// # Returns
+    ///
+    /// The number of fields in the hash.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let count = client.hlen("myhash").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hlen(&mut self, key: &str) -> Result<i64> {
+        let cmd = command::hlen(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Gets all field names from a hash (HKEYS).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    ///
+    /// # Returns
+    ///
+    /// A vector of field names.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let keys = client.hkeys("myhash").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hkeys(&mut self, key: &str) -> Result<Vec<String>> {
+        let cmd = command::hkeys(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Gets all values from a hash (HVALS).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    ///
+    /// # Returns
+    ///
+    /// A vector of values.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let values = client.hvals("myhash").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hvals(&mut self, key: &str) -> Result<Vec<String>> {
+        let cmd = command::hvals(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_string(frame)
+    }
+
+    /// Increments a hash field by an integer (HINCRBY).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `field` - The field name.
+    /// * `increment` - The amount to increment by.
+    ///
+    /// # Returns
+    ///
+    /// The value of the field after the increment.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let new_value = client.hincrby("myhash", "counter", 5).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hincrby(&mut self, key: &str, field: &str, increment: i64) -> Result<i64> {
+        let cmd = command::hincrby(key.to_string(), field.to_string(), increment);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Increments a hash field by a float (HINCRBYFLOAT).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `field` - The field name.
+    /// * `increment` - The amount to increment by.
+    ///
+    /// # Returns
+    ///
+    /// The value of the field after the increment.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let new_value = client.hincrbyfloat("myhash", "price", 2.5).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hincrbyfloat(&mut self, key: &str, field: &str, increment: f64) -> Result<f64> {
+        let cmd = command::hincrbyfloat(key.to_string(), field.to_string(), increment);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_float(frame)
+    }
+
+    /// Sets a field in a hash only if it does not exist (HSETNX).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The hash key.
+    /// * `field` - The field name.
+    /// * `value` - The value to set.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the field was set, `false` if it already existed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let was_set = client.hsetnx("myhash", "field1", Bytes::from("value")).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn hsetnx(&mut self, key: &str, field: &str, value: Bytes) -> Result<bool> {
+        let cmd = command::hsetnx(key.to_string(), field.to_string(), value);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
 }
 
 #[cfg(test)]
