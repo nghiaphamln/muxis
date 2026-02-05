@@ -1543,7 +1543,7 @@ impl Client {
         let cmd = command::lpos(key.to_string(), element);
         let frame = self.connection.send_command(cmd.into_frame()).await?;
         match frame {
-            Frame::Null => Ok(None),
+            Frame::Null | Frame::BulkString(None) => Ok(None),
             Frame::Integer(i) => Ok(Some(i)),
             _ => command::frame_to_int(frame).map(Some),
         }
