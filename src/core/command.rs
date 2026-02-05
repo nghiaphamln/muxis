@@ -154,6 +154,59 @@ pub fn client_setname(name: impl Into<Bytes>) -> Cmd {
     Cmd::new("CLIENT").arg("SETNAME").arg(name)
 }
 
+/// Creates a MGET command.
+#[inline]
+pub fn mget(keys: Vec<String>) -> Cmd {
+    let mut cmd = Cmd::new("MGET");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd
+}
+
+/// Creates a MSET command.
+#[inline]
+pub fn mset(pairs: Vec<(String, Bytes)>) -> Cmd {
+    let mut cmd = Cmd::new("MSET");
+    for (key, value) in pairs {
+        cmd = cmd.arg(key).arg(value);
+    }
+    cmd
+}
+
+/// Creates a SETNX command.
+#[inline]
+pub fn setnx(key: impl Into<Bytes>, value: impl Into<Bytes>) -> Cmd {
+    Cmd::new("SETNX").arg(key).arg(value)
+}
+
+/// Creates a SETEX command.
+#[inline]
+pub fn setex(key: impl Into<Bytes>, seconds: u64, value: impl Into<Bytes>) -> Cmd {
+    Cmd::new("SETEX")
+        .arg(key)
+        .arg(seconds.to_string())
+        .arg(value)
+}
+
+/// Creates a GETDEL command.
+#[inline]
+pub fn getdel(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("GETDEL").arg(key)
+}
+
+/// Creates an APPEND command.
+#[inline]
+pub fn append(key: impl Into<Bytes>, value: impl Into<Bytes>) -> Cmd {
+    Cmd::new("APPEND").arg(key).arg(value)
+}
+
+/// Creates a STRLEN command.
+#[inline]
+pub fn strlen(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("STRLEN").arg(key)
+}
+
 /// Parses a frame as a Redis response.
 #[inline]
 pub fn parse_frame_response(frame: Frame) -> Result<Frame, crate::Error> {
@@ -213,6 +266,39 @@ pub fn frame_to_bool(frame: Frame) -> Result<bool, crate::Error> {
         }),
         _ => Err(crate::Error::Protocol {
             message: "unexpected frame type".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame array to a vector of optional bytes.
+#[inline]
+pub fn frame_to_vec_bytes(frame: Frame) -> Result<Vec<Option<Bytes>>, crate::Error> {
+    match frame {
+        Frame::Array(arr) => {
+            let mut result = Vec::with_capacity(arr.len());
+            for item in arr {
+                match item {
+                    Frame::BulkString(b) => result.push(b),
+                    Frame::Null => result.push(None),
+                    Frame::Error(e) => {
+                        return Err(crate::Error::Server {
+                            message: String::from_utf8_lossy(&e).into_owned(),
+                        })
+                    }
+                    _ => {
+                        return Err(crate::Error::Protocol {
+                            message: "unexpected frame type in array".to_string(),
+                        })
+                    }
+                }
+            }
+            Ok(result)
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "expected array frame".to_string(),
         }),
     }
 }
@@ -302,5 +388,114 @@ mod tests {
                 Frame::BulkString(Some("password".into()))
             ])
         );
+    }
+
+    #[test]
+    fn test_mget_cmd() {
+        let cmd = mget(vec!["key1".to_string(), "key2".to_string()]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("MGET".into())),
+                Frame::BulkString(Some("key1".into())),
+                Frame::BulkString(Some("key2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_mset_cmd() {
+        let cmd = mset(vec![
+            ("key1".to_string(), Bytes::from("value1")),
+            ("key2".to_string(), Bytes::from("value2")),
+        ]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("MSET".into())),
+                Frame::BulkString(Some("key1".into())),
+                Frame::BulkString(Some("value1".into())),
+                Frame::BulkString(Some("key2".into())),
+                Frame::BulkString(Some("value2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_setnx_cmd() {
+        let cmd = setnx("key", "value");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SETNX".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("value".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_setex_cmd() {
+        let cmd = setex("key", 60, "value");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("SETEX".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("60".into())),
+                Frame::BulkString(Some("value".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_getdel_cmd() {
+        let cmd = getdel("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("GETDEL".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_append_cmd() {
+        let cmd = append("key", "value");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("APPEND".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("value".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_strlen_cmd() {
+        let cmd = strlen("key");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("STRLEN".into())),
+                Frame::BulkString(Some("key".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_frame_to_vec_bytes() {
+        let frame = Frame::Array(vec![
+            Frame::BulkString(Some("value1".into())),
+            Frame::Null,
+            Frame::BulkString(Some("value3".into())),
+        ]);
+        let result = frame_to_vec_bytes(frame).unwrap();
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], Some(Bytes::from("value1")));
+        assert_eq!(result[1], None);
+        assert_eq!(result[2], Some(Bytes::from("value3")));
     }
 }

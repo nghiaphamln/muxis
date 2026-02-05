@@ -336,6 +336,224 @@ impl Client {
         command::parse_frame_response(frame)?;
         Ok(())
     }
+
+    /// Gets the values of all specified keys (MGET).
+    ///
+    /// For every key that does not exist, the corresponding element will be `None`.
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - Slice of key names to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `Option<Bytes>`, one for each key. `None` for keys that do not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("key1", Bytes::from("value1")).await?;
+    /// client.set("key2", Bytes::from("value2")).await?;
+    /// let values = client.mget(&["key1", "key2", "key3"]).await?;
+    /// assert_eq!(values[0], Some(Bytes::from("value1")));
+    /// assert_eq!(values[1], Some(Bytes::from("value2")));
+    /// assert_eq!(values[2], None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn mget(&mut self, keys: &[&str]) -> Result<Vec<Option<Bytes>>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::mget(keys_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_bytes(frame)
+    }
+
+    /// Sets multiple key-value pairs atomically (MSET).
+    ///
+    /// # Arguments
+    ///
+    /// * `pairs` - Slice of (key, value) tuples to set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.mset(&[
+    ///     ("key1", Bytes::from("value1")),
+    ///     ("key2", Bytes::from("value2")),
+    /// ]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn mset(&mut self, pairs: &[(&str, Bytes)]) -> Result<()> {
+        let pairs_vec = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect();
+        let cmd = command::mset(pairs_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::parse_frame_response(frame)?;
+        Ok(())
+    }
+
+    /// Sets the value of a key only if it does not exist (SETNX).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to set.
+    /// * `value` - The value to set.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the key was set, `false` if the key already existed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let was_set = client.setnx("mykey", Bytes::from("value")).await?;
+    /// assert!(was_set);
+    /// let was_set_again = client.setnx("mykey", Bytes::from("newvalue")).await?;
+    /// assert!(!was_set_again);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn setnx(&mut self, key: &str, value: Bytes) -> Result<bool> {
+        let cmd = command::setnx(key.to_string(), value);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bool(frame)
+    }
+
+    /// Sets the value of a key with an expiration in seconds (SETEX).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to set.
+    /// * `seconds` - Expiration time in seconds.
+    /// * `value` - The value to set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.setex("mykey", 10, Bytes::from("value")).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn setex(&mut self, key: &str, seconds: u64, value: Bytes) -> Result<()> {
+        let cmd = command::setex(key.to_string(), seconds, value);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::parse_frame_response(frame)?;
+        Ok(())
+    }
+
+    /// Gets the value of a key and deletes it atomically (GETDEL).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to get and delete.
+    ///
+    /// # Returns
+    ///
+    /// `Some(Bytes)` if the key exists, or `None` if it does not.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("mykey", Bytes::from("value")).await?;
+    /// let value = client.getdel("mykey").await?;
+    /// assert_eq!(value, Some(Bytes::from("value")));
+    /// let value_again = client.get("mykey").await?;
+    /// assert_eq!(value_again, None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn getdel(&mut self, key: &str) -> Result<Option<Bytes>> {
+        let cmd = command::getdel(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bytes(frame)
+    }
+
+    /// Appends a value to a key (APPEND).
+    ///
+    /// If the key does not exist, it is created and set as an empty string, then the value
+    /// is appended.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to append to.
+    /// * `value` - The value to append.
+    ///
+    /// # Returns
+    ///
+    /// The length of the string after the append operation.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("mykey", Bytes::from("Hello")).await?;
+    /// let len = client.append("mykey", Bytes::from(" World")).await?;
+    /// assert_eq!(len, 11);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn append(&mut self, key: &str, value: Bytes) -> Result<i64> {
+        let cmd = command::append(key.to_string(), value);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Returns the length of the string value stored at key (STRLEN).
+    ///
+    /// If the key does not exist, returns 0.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to check.
+    ///
+    /// # Returns
+    ///
+    /// The length of the string at key, or 0 if the key does not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.set("mykey", Bytes::from("Hello World")).await?;
+    /// let len = client.strlen("mykey").await?;
+    /// assert_eq!(len, 11);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn strlen(&mut self, key: &str) -> Result<i64> {
+        let cmd = command::strlen(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
 }
 
 #[cfg(test)]
