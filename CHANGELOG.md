@@ -5,6 +5,108 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Phase 4: Cluster Support Foundation (In Progress)
+
+Foundation for Redis Cluster support with slot-based routing, topology management, and connection pooling.
+
+### Added
+
+#### Cluster Infrastructure (`cluster` feature flag)
+
+**Slot Calculation & Routing**
+- `key_slot()` - CRC16-CCITT based slot calculation (16384 slots)
+- `SLOT_COUNT` constant (16383)
+- Hash tag support `{...}` for multi-key operations ensuring same-slot routing
+- 16 unit tests covering edge cases and Redis compatibility
+
+**Error Handling**
+- `Error::Moved` variant for MOVED redirect errors with slot and address
+- `Error::Ask` variant for ASK redirect errors with slot and address
+- `Error::ClusterDown` for cluster unavailability
+- `Error::CrossSlot` for multi-key commands across different slots
+- `parse_redis_error()` function for parsing Redis cluster error responses
+- 13 unit tests for error parsing
+
+**Cluster Commands**
+- `cluster_slots()` - Query cluster slot distribution
+- `cluster_nodes()` - Query cluster node information
+- `cluster_info()` - Query cluster state
+- `asking()` - Enable ASK redirect handling
+- `readonly()` - Enable read operations on replicas
+- `readwrite()` - Disable read operations on replicas
+- 6 unit tests for command builders
+
+**Topology Management**
+- `ClusterTopology` struct for storing cluster state
+- `NodeInfo` struct with node metadata (ID, address, flags, slots)
+- `NodeFlags` struct for node role and state (master, replica, failing, etc.)
+- `NodeId` type for unique node identification
+- `SlotRange` struct mapping slot ranges to master and replicas
+- `from_cluster_slots()` parser for CLUSTER SLOTS responses
+- `from_cluster_nodes()` parser for CLUSTER NODES text responses
+- `get_master_for_slot()` for routing queries
+- `get_replicas_for_slot()` for read operations
+- `build_slot_ranges()` for constructing topology from node information
+- 24 unit tests covering topology parsing and lookups
+
+**Connection Pool**
+- `ConnectionPool` for managing connections per cluster node
+- `NodeConnection` wrapper with health tracking and usage statistics
+- `PoolConfig` with configurable limits:
+  - `max_connections_per_node` (default: 10)
+  - `min_idle_per_node` (default: 1)
+  - `max_idle_time` (default: 5 minutes)
+  - `health_check_interval` (default: 30 seconds)
+- Connection reuse logic with health checking
+- Automatic cleanup of idle and unhealthy connections
+- 3 unit tests for pool management
+
+**Cluster Client**
+- `ClusterClient` struct for cluster operations
+- Seed node parsing with comma-separated addresses
+- Automatic topology discovery via CLUSTER SLOTS
+- Slot-based routing to correct nodes
+- Connection pool integration
+- Basic command methods:
+  - `get(key)` - Get string value with slot routing
+  - `set(key, value)` - Set string value with slot routing
+  - `del(key)` - Delete key with slot routing
+  - `exists(key)` - Check key existence with slot routing
+- Management APIs:
+  - `node_count()` - Number of cluster nodes
+  - `slot_range_count()` - Number of slot ranges
+  - `is_fully_covered()` - Verify all slots are assigned
+  - `refresh_topology()` - Manual topology refresh
+- 7 unit tests for client initialization and utilities
+
+### Technical Details
+
+- **Module**: `src/cluster/` with 6 files (2,241 lines)
+  - `slot.rs` - Slot calculation (293 lines, 16 tests)
+  - `errors.rs` - Error parsing (252 lines, 13 tests)
+  - `commands.rs` - Command builders (230 lines, 6 tests)
+  - `topology.rs` - Topology management (765 lines, 24 tests)
+  - `pool.rs` - Connection pooling (366 lines, 3 tests)
+  - `client.rs` - Cluster client (335 lines, 7 tests)
+- **Test Coverage**: 69 new tests (all passing)
+- **Code Quality**: Zero clippy warnings with `-D warnings` flag
+- **Documentation**: 100% public API coverage with examples
+- **Feature Flag**: All cluster code behind `cluster` feature
+
+### Known Limitations
+
+- MOVED/ASK redirect handling infrastructure ready but not yet integrated
+- Multi-key command validation not yet implemented
+- Integration tests with real Redis cluster pending
+- Auto-detect mode (standalone vs cluster) not yet implemented
+
+### Improved
+
+- Error types extended with cluster-specific variants
+- Feature flag structure includes `cluster` feature
+
 ## [0.3.0] - 2026-02-05
 
 ### Phase 3: Standalone API Completeness
