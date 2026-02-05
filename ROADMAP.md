@@ -128,24 +128,24 @@ Retry Policy:
 
 **Goal**: Establish development infrastructure
 
-- [ ] Workspace setup with all crates
-- [ ] CI/CD: fmt, clippy, tests, doc tests, coverage
-- [ ] MSRV policy: Rust 1.78+
-- [ ] Feature flags structure:
+- [x] Workspace setup with all crates
+- [x] CI/CD: fmt, clippy, tests, doc tests, coverage
+- [x] MSRV policy: Rust 1.78+
+- [x] Feature flags structure:
   - `tls` - TLS/SSL support
   - `resp3` - RESP3 protocol
   - `cluster` - Cluster mode
   - `json` - RedisJSON commands
   - `streams` - Streams commands
   - `tracing` - Observability
-- [ ] Error model design:
+- [x] Error model design:
   ```rust
   pub struct RedisError {
       kind: ErrorKind,
       message: String,
       source: Option<Box<dyn Error>>,
   }
-  
+
   pub enum ErrorKind {
       Io,
       Protocol,
@@ -156,7 +156,7 @@ Retry Policy:
       // ...
   }
   ```
-- [ ] Tracing integration setup
+- [x] Tracing integration setup
 
 **DoD**: `cargo test` passes, publishable skeleton crates
 

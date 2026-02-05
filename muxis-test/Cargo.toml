@@ -1,0 +1,15 @@
+[package]
+name = "muxis-test"
+version = "0.1.0"
+edition = "2021"
+authors = ["Muxis Contributors"]
+description = "Test utilities for Muxis Redis client"
+repository = "https://github.com/nexorion/muxis"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+muxis-proto = { path = "../muxis-proto" }
+muxis-core = { path = "../muxis-core" }
+muxis-cluster = { path = "../muxis-cluster" }
+muxis-client = { path = "../muxis-client" }
+tokio = { version = "1.49", features = ["test-util"] }
