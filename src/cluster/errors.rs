@@ -36,15 +36,15 @@ pub fn parse_redis_error(error_msg: &[u8]) -> Error {
     let msg = msg.trim();
 
     // Check for MOVED redirect
-    if msg.starts_with("MOVED ") {
-        if let Some((slot, address)) = parse_redirect(&msg[6..]) {
+    if let Some(stripped) = msg.strip_prefix("MOVED ") {
+        if let Some((slot, address)) = parse_redirect(stripped) {
             return Error::Moved { slot, address };
         }
     }
 
     // Check for ASK redirect
-    if msg.starts_with("ASK ") {
-        if let Some((slot, address)) = parse_redirect(&msg[4..]) {
+    if let Some(stripped) = msg.strip_prefix("ASK ") {
+        if let Some((slot, address)) = parse_redirect(stripped) {
             return Error::Ask { slot, address };
         }
     }

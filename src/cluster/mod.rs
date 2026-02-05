@@ -37,6 +37,7 @@
 //! # }
 //! ```
 
+pub mod commands;
 mod errors;
 mod slot;
 
