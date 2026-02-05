@@ -37,12 +37,14 @@
 //! # }
 //! ```
 
+mod client;
 pub mod commands;
 mod errors;
 mod pool;
 mod slot;
 mod topology;
 
+pub use client::ClusterClient;
 pub use errors::parse_redis_error;
 pub use pool::{ConnectionPool, NodeConnection, PoolConfig};
 pub use slot::{key_slot, SLOT_COUNT};
