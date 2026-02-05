@@ -113,7 +113,12 @@ More examples available in the `examples/` directory:
 - CRC16 slot calculation with hash tag support `{...}`
 - Topology discovery and management via CLUSTER SLOTS/NODES
 - Slot-based routing (16384 slots)
-- Connection pooling per node
+- Connection pooling per node with health tracking
+- MOVED/ASK redirect handling with automatic retry
+- Production-grade resilience:
+  - MOVED storm detection and topology refresh throttling
+  - Automatic retry on IO errors with exponential backoff
+  - Node failure detection and seamless failover
 - Basic operations: GET, SET, DEL, EXISTS
 
 ## Usage Examples
@@ -192,7 +197,7 @@ Muxis is organized as a single-crate library with well-defined modules:
 
 - **muxis::proto**: RESP protocol codec (encoder/decoder)
 - **muxis::core**: Connection management, multiplexing, and command execution
-- **muxis::cluster**: Cluster support with slot-based routing (feature-gated: `cluster`)
+- **muxis::cluster**: Cluster support with slot-based routing, resilience features (feature-gated: `cluster`)
 - **muxis::testing**: Test utilities (feature-gated with `test-utils`)
 
 ### Multiplexing Model

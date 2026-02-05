@@ -8,8 +8,10 @@ use crate::core::multiplexed::MultiplexedConnection;
 use crate::core::{Error, Result};
 use crate::proto::frame::Frame;
 use bytes::Bytes;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::time::{Duration, Instant};
+use tokio::sync::{Mutex, RwLock};
 
 use super::commands::{asking, cluster_slots};
 use super::errors::parse_redis_error;
@@ -22,6 +24,21 @@ const DEFAULT_QUEUE_SIZE: usize = 1024;
 
 /// Maximum number of redirect retries before giving up.
 const MAX_REDIRECTS: u8 = 5;
+
+/// Maximum number of IO error retries before giving up.
+const MAX_RETRIES_ON_IO: u8 = 3;
+
+/// Base delay for exponential backoff on IO errors (milliseconds).
+const RETRY_DELAY_MS: u64 = 100;
+
+/// MOVED redirect count threshold to trigger topology refresh.
+const MOVED_STORM_THRESHOLD: usize = 10;
+
+/// Time window for counting MOVED redirects (seconds).
+const MOVED_STORM_WINDOW: Duration = Duration::from_secs(1);
+
+/// Minimum cooldown between topology refreshes (milliseconds).
+const REFRESH_COOLDOWN: Duration = Duration::from_millis(500);
 
 /// Helper function to create a connection to a Redis node.
 async fn connect_to_node(address: &str) -> Result<MultiplexedConnection> {
@@ -43,6 +60,74 @@ async fn connect_to_node(address: &str) -> Result<MultiplexedConnection> {
     Ok(MultiplexedConnection::new(connection, DEFAULT_QUEUE_SIZE))
 }
 
+/// Tracks MOVED redirects to detect topology change storms.
+///
+/// When many MOVED redirects occur in a short time window (e.g., during slot
+/// migration or resharding), we want to refresh topology but not on every
+/// single redirect to avoid excessive load.
+struct MovedStormTracker {
+    /// Count of MOVED redirects in current window
+    moved_count: AtomicUsize,
+    /// Start of the current counting window
+    window_start: Mutex<Instant>,
+    /// Timestamp of last topology refresh
+    last_refresh: Mutex<Instant>,
+}
+
+impl MovedStormTracker {
+    fn new() -> Self {
+        let now = Instant::now();
+        let far_past = now - Duration::from_secs(3600); // 1 hour ago, ensures first refresh allowed
+        Self {
+            moved_count: AtomicUsize::new(0),
+            window_start: Mutex::new(now),
+            last_refresh: Mutex::new(far_past),
+        }
+    }
+
+    /// Records a MOVED redirect and checks if we should refresh topology.
+    ///
+    /// Returns true if we should trigger a topology refresh based on:
+    /// - MOVED count exceeding threshold within window
+    /// - Cooldown period has elapsed since last refresh
+    async fn should_refresh(&self) -> bool {
+        let now = Instant::now();
+
+        // Increment counter
+        let count = self.moved_count.fetch_add(1, Ordering::Relaxed) + 1;
+
+        // Check if window has expired
+        let mut window_start = self.window_start.lock().await;
+        if now.duration_since(*window_start) > MOVED_STORM_WINDOW {
+            // Reset window
+            self.moved_count.store(0, Ordering::Relaxed);
+            *window_start = now;
+            return false;
+        }
+
+        // Check if threshold exceeded
+        if count >= MOVED_STORM_THRESHOLD {
+            // Check cooldown
+            let mut last_refresh = self.last_refresh.lock().await;
+            if now.duration_since(*last_refresh) < REFRESH_COOLDOWN {
+                return false;
+            }
+
+            // Update last refresh timestamp
+            *last_refresh = now;
+            return true;
+        }
+
+        false
+    }
+
+    /// Resets the storm tracker (useful after explicit refresh).
+    async fn reset(&self) {
+        self.moved_count.store(0, Ordering::Relaxed);
+        *self.last_refresh.lock().await = Instant::now();
+    }
+}
+
 /// Redis Cluster client.
 ///
 /// Provides automatic slot-based routing to cluster nodes and handles
@@ -55,6 +140,8 @@ pub struct ClusterClient {
     topology: Arc<RwLock<ClusterTopology>>,
     /// Connection pool for cluster nodes
     pool: Arc<ConnectionPool>,
+    /// MOVED storm tracker for throttling topology refreshes
+    storm_tracker: Arc<MovedStormTracker>,
 }
 
 impl ClusterClient {
@@ -82,6 +169,7 @@ impl ClusterClient {
             seed_nodes: Arc::new(seed_nodes.clone()),
             topology: Arc::new(RwLock::new(ClusterTopology::new())),
             pool,
+            storm_tracker: Arc::new(MovedStormTracker::new()),
         };
 
         // Discover cluster topology
@@ -124,6 +212,8 @@ impl ClusterClient {
             if let Ok(topology) = self.fetch_topology_from_node(seed_addr).await {
                 let mut topo = self.topology.write().await;
                 *topo = topology;
+                // Reset storm tracker after successful refresh
+                self.storm_tracker.reset().await;
                 return Ok(());
             }
         }
@@ -254,6 +344,11 @@ impl ClusterClient {
     /// - MOVED: Updates topology cache and retries on the new node
     /// - ASK: Sends ASKING command and retries once on the temporary node
     ///
+    /// Additionally provides resilience features:
+    /// - MOVED storm detection: Throttles topology refreshes during migrations
+    /// - IO error retry: Automatically retries on connection failures with exponential backoff
+    /// - Node failure handling: Marks unhealthy connections and refreshes topology
+    ///
     /// # Arguments
     ///
     /// * `frame` - The command frame to execute
@@ -267,15 +362,39 @@ impl ClusterClient {
     ///
     /// Returns error if:
     /// - Maximum redirect count exceeded
-    /// - Connection fails
+    /// - Maximum retry count exceeded
+    /// - Connection fails after all retries
     /// - Command execution fails
     async fn execute_with_redirects(&self, frame: Frame, slot: u16) -> Result<Frame> {
         let mut redirects = 0;
+        let mut io_retries = 0;
         let current_frame = frame;
 
         loop {
             // Get connection for the slot
-            let conn = self.get_connection_for_slot(slot).await?;
+            let conn_result = self.get_connection_for_slot(slot).await;
+
+            let conn = match conn_result {
+                Ok(conn) => conn,
+                Err(Error::Io { source }) => {
+                    // IO error getting connection - likely node down
+                    io_retries += 1;
+                    if io_retries > MAX_RETRIES_ON_IO {
+                        return Err(Error::Io { source });
+                    }
+
+                    // Refresh topology and retry
+                    if let Err(e) = self.refresh_topology().await {
+                        tracing::warn!("Failed to refresh topology after connection error: {}", e);
+                    }
+
+                    // Exponential backoff
+                    let delay_ms = RETRY_DELAY_MS * 2_u64.pow(io_retries as u32 - 1);
+                    tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            };
 
             // Execute command
             let result = conn.send_command(current_frame.clone()).await;
@@ -289,7 +408,7 @@ impl ClusterClient {
                     match error {
                         Error::Moved {
                             slot: _new_slot,
-                            address: _,
+                            address,
                         } => {
                             // MOVED redirect: permanent slot migration
                             redirects += 1;
@@ -302,10 +421,24 @@ impl ClusterClient {
                                 });
                             }
 
-                            // Refresh topology to learn about new slot assignment
-                            self.refresh_topology().await?;
+                            // Check if we should refresh topology (storm detection)
+                            if self.storm_tracker.should_refresh().await {
+                                tracing::debug!(
+                                    "MOVED storm detected, refreshing topology (threshold: {})",
+                                    MOVED_STORM_THRESHOLD
+                                );
+                                if let Err(e) = self.refresh_topology().await {
+                                    tracing::warn!("Failed to refresh topology after MOVED: {}", e);
+                                }
+                            } else {
+                                tracing::trace!(
+                                    "MOVED redirect to {} for slot {}, not refreshing yet",
+                                    address,
+                                    _new_slot
+                                );
+                            }
 
-                            // Retry with updated topology (loop will use new_slot implicitly)
+                            // Retry with updated topology (loop will use slot routing)
                             continue;
                         }
                         Error::Ask {
@@ -338,6 +471,40 @@ impl ClusterClient {
                             return Err(error);
                         }
                     }
+                }
+                Err(Error::Io { source }) => {
+                    // IO error during command execution - connection failure
+                    io_retries += 1;
+                    if io_retries > MAX_RETRIES_ON_IO {
+                        return Err(Error::Io { source });
+                    }
+
+                    tracing::warn!(
+                        "IO error on slot {}, retry {}/{}: {}",
+                        slot,
+                        io_retries,
+                        MAX_RETRIES_ON_IO,
+                        source
+                    );
+
+                    // Mark connection as unhealthy in pool
+                    // (Pool will filter it out on next get_connection)
+                    let topology = self.topology.read().await;
+                    if let Some(master) = topology.get_master_for_slot(slot) {
+                        self.pool.mark_unhealthy(&master.id, &master.address).await;
+                        tracing::debug!("Marked node {} as unhealthy", master.address);
+                    }
+                    drop(topology);
+
+                    // Refresh topology to discover new master
+                    if let Err(e) = self.refresh_topology().await {
+                        tracing::warn!("Failed to refresh topology after IO error: {}", e);
+                    }
+
+                    // Exponential backoff
+                    let delay_ms = RETRY_DELAY_MS * 2_u64.pow(io_retries as u32 - 1);
+                    tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                    continue;
                 }
                 Err(e) => return Err(e),
             }
@@ -571,6 +738,7 @@ mod tests {
             seed_nodes: Arc::new(vec!["redis://127.0.0.1:7000".to_string()]),
             topology: Arc::new(RwLock::new(ClusterTopology::new())),
             pool,
+            storm_tracker: Arc::new(MovedStormTracker::new()),
         };
 
         assert_eq!(client.node_count().await, 0);
@@ -585,6 +753,7 @@ mod tests {
             seed_nodes: Arc::new(vec!["redis://127.0.0.1:7000".to_string()]),
             topology: Arc::new(RwLock::new(ClusterTopology::new())),
             pool,
+            storm_tracker: Arc::new(MovedStormTracker::new()),
         };
 
         assert!(!client.is_fully_covered().await);
@@ -601,6 +770,7 @@ mod tests {
             seed_nodes: Arc::new(vec!["redis://127.0.0.1:7000".to_string()]),
             topology: Arc::new(RwLock::new(ClusterTopology::new())),
             pool,
+            storm_tracker: Arc::new(MovedStormTracker::new()),
         };
 
         // Test passes if we can create a client (constant is defined)
@@ -616,6 +786,7 @@ mod tests {
             seed_nodes: Arc::new(vec!["redis://127.0.0.1:7000".to_string()]),
             topology: Arc::new(RwLock::new(ClusterTopology::new())),
             pool,
+            storm_tracker: Arc::new(MovedStormTracker::new()),
         };
 
         // Should attempt to create connection even if address not in topology
@@ -679,5 +850,131 @@ mod tests {
         let keys = vec!["{user}:1", "{user}:2", "{user}:3"];
         let result = ClusterClient::validate_same_slot(&keys);
         assert!(result.is_ok());
+    }
+
+    // Tests for resilience constants
+    #[test]
+    fn test_resilience_constants() {
+        assert_eq!(MAX_RETRIES_ON_IO, 3);
+        assert_eq!(RETRY_DELAY_MS, 100);
+        assert_eq!(MOVED_STORM_THRESHOLD, 10);
+        assert_eq!(MOVED_STORM_WINDOW, Duration::from_secs(1));
+        assert_eq!(REFRESH_COOLDOWN, Duration::from_millis(500));
+    }
+
+    // Tests for MovedStormTracker
+    #[tokio::test]
+    async fn test_storm_tracker_initial_state() {
+        let tracker = MovedStormTracker::new();
+        // First MOVED should not trigger refresh (threshold not reached)
+        let should_refresh = tracker.should_refresh().await;
+        assert!(!should_refresh);
+    }
+
+    #[tokio::test]
+    async fn test_storm_tracker_threshold_detection() {
+        let tracker = MovedStormTracker::new();
+
+        // Simulate MOVED redirects below threshold (9 times)
+        for i in 0..9 {
+            let result = tracker.should_refresh().await;
+            assert!(
+                !result,
+                "Should not refresh at count {} (below threshold)",
+                i + 1
+            );
+        }
+
+        // 10th MOVED should trigger refresh (at threshold)
+        let result = tracker.should_refresh().await;
+        assert!(result, "Should refresh at threshold (10)");
+    }
+
+    #[tokio::test]
+    async fn test_storm_tracker_cooldown() {
+        let tracker = MovedStormTracker::new();
+
+        // Manually set counter to threshold - 1, then call should_refresh to reach threshold
+        tracker
+            .moved_count
+            .store(MOVED_STORM_THRESHOLD - 1, Ordering::Relaxed);
+
+        let first_refresh = tracker.should_refresh().await;
+        assert!(first_refresh, "First refresh should succeed at threshold");
+
+        // Immediate second attempt should be blocked by cooldown even if counter at threshold
+        tracker
+            .moved_count
+            .store(MOVED_STORM_THRESHOLD - 1, Ordering::Relaxed);
+        let second_refresh = tracker.should_refresh().await;
+        assert!(!second_refresh, "Should be blocked by cooldown");
+
+        // Sleep for real time to allow cooldown to expire
+        tokio::time::sleep(REFRESH_COOLDOWN + Duration::from_millis(100)).await;
+        tracker
+            .moved_count
+            .store(MOVED_STORM_THRESHOLD - 1, Ordering::Relaxed);
+        let third_refresh = tracker.should_refresh().await;
+        assert!(third_refresh, "Should refresh after cooldown expires");
+    }
+
+    #[tokio::test]
+    async fn test_storm_tracker_window_reset() {
+        let tracker = MovedStormTracker::new();
+
+        // Add some MOVED redirects (5 times)
+        for _ in 0..5 {
+            tracker.should_refresh().await;
+        }
+
+        // Counter should be 5 now
+        let count_before = tracker.moved_count.load(Ordering::Relaxed);
+        assert_eq!(count_before, 5, "Counter should be 5 after 5 calls");
+
+        // Sleep for real time beyond window to trigger reset
+        tokio::time::sleep(MOVED_STORM_WINDOW + Duration::from_millis(100)).await;
+
+        // Next should_refresh call will detect expired window and reset counter
+        // The method increments first (5 -> 6), detects expiry, resets to 0, returns false
+        let result = tracker.should_refresh().await;
+        assert!(!result, "Should not refresh when window resets");
+
+        // Counter should be 0 after window reset
+        let count_after = tracker.moved_count.load(Ordering::Relaxed);
+        assert_eq!(
+            count_after, 0,
+            "Counter should be 0 after window reset, got {}",
+            count_after
+        );
+    }
+
+    #[tokio::test]
+    async fn test_storm_tracker_reset() {
+        let tracker = MovedStormTracker::new();
+
+        // Add some redirects
+        for _ in 0..5 {
+            tracker.should_refresh().await;
+        }
+
+        assert_eq!(tracker.moved_count.load(Ordering::Relaxed), 5);
+
+        // Reset tracker
+        tracker.reset().await;
+
+        // Counter should be reset
+        assert_eq!(tracker.moved_count.load(Ordering::Relaxed), 0);
+    }
+
+    #[tokio::test]
+    async fn test_io_retry_constants() {
+        // Verify exponential backoff calculation
+        let delay1 = RETRY_DELAY_MS * 2_u64.pow(0); // 100ms
+        let delay2 = RETRY_DELAY_MS * 2_u64.pow(1); // 200ms
+        let delay3 = RETRY_DELAY_MS * 2_u64.pow(2); // 400ms
+
+        assert_eq!(delay1, 100);
+        assert_eq!(delay2, 200);
+        assert_eq!(delay3, 400);
     }
 }
