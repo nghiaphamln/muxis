@@ -355,6 +355,114 @@ pub fn hsetnx(key: impl Into<Bytes>, field: impl Into<Bytes>, value: impl Into<B
     Cmd::new("HSETNX").arg(key).arg(field).arg(value)
 }
 
+/// Creates an LPUSH command.
+#[inline]
+pub fn lpush(key: String, values: Vec<Bytes>) -> Cmd {
+    let mut cmd = Cmd::new("LPUSH").arg(key);
+    for value in values {
+        cmd = cmd.arg(value);
+    }
+    cmd
+}
+
+/// Creates an RPUSH command.
+#[inline]
+pub fn rpush(key: String, values: Vec<Bytes>) -> Cmd {
+    let mut cmd = Cmd::new("RPUSH").arg(key);
+    for value in values {
+        cmd = cmd.arg(value);
+    }
+    cmd
+}
+
+/// Creates an LPOP command.
+#[inline]
+pub fn lpop(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("LPOP").arg(key)
+}
+
+/// Creates an RPOP command.
+#[inline]
+pub fn rpop(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("RPOP").arg(key)
+}
+
+/// Creates an LLEN command.
+#[inline]
+pub fn llen(key: impl Into<Bytes>) -> Cmd {
+    Cmd::new("LLEN").arg(key)
+}
+
+/// Creates an LRANGE command.
+#[inline]
+pub fn lrange(key: impl Into<Bytes>, start: i64, stop: i64) -> Cmd {
+    Cmd::new("LRANGE")
+        .arg(key)
+        .arg(start.to_string())
+        .arg(stop.to_string())
+}
+
+/// Creates an LINDEX command.
+#[inline]
+pub fn lindex(key: impl Into<Bytes>, index: i64) -> Cmd {
+    Cmd::new("LINDEX").arg(key).arg(index.to_string())
+}
+
+/// Creates an LSET command.
+#[inline]
+pub fn lset(key: impl Into<Bytes>, index: i64, value: impl Into<Bytes>) -> Cmd {
+    Cmd::new("LSET").arg(key).arg(index.to_string()).arg(value)
+}
+
+/// Creates an LREM command.
+#[inline]
+pub fn lrem(key: impl Into<Bytes>, count: i64, value: impl Into<Bytes>) -> Cmd {
+    Cmd::new("LREM").arg(key).arg(count.to_string()).arg(value)
+}
+
+/// Creates an LTRIM command.
+#[inline]
+pub fn ltrim(key: impl Into<Bytes>, start: i64, stop: i64) -> Cmd {
+    Cmd::new("LTRIM")
+        .arg(key)
+        .arg(start.to_string())
+        .arg(stop.to_string())
+}
+
+/// Creates an RPOPLPUSH command.
+#[inline]
+pub fn rpoplpush(source: impl Into<Bytes>, destination: impl Into<Bytes>) -> Cmd {
+    Cmd::new("RPOPLPUSH").arg(source).arg(destination)
+}
+
+/// Creates a BLPOP command.
+#[inline]
+pub fn blpop(keys: Vec<String>, timeout: u64) -> Cmd {
+    let mut cmd = Cmd::new("BLPOP");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd = cmd.arg(timeout.to_string());
+    cmd
+}
+
+/// Creates a BRPOP command.
+#[inline]
+pub fn brpop(keys: Vec<String>, timeout: u64) -> Cmd {
+    let mut cmd = Cmd::new("BRPOP");
+    for key in keys {
+        cmd = cmd.arg(key);
+    }
+    cmd = cmd.arg(timeout.to_string());
+    cmd
+}
+
+/// Creates an LPOS command.
+#[inline]
+pub fn lpos(key: impl Into<Bytes>, element: impl Into<Bytes>) -> Cmd {
+    Cmd::new("LPOS").arg(key).arg(element)
+}
+
 /// Parses a frame as a Redis response.
 #[inline]
 pub fn parse_frame_response(frame: Frame) -> Result<Frame, crate::Error> {
@@ -594,6 +702,74 @@ pub fn frame_to_float(frame: Frame) -> Result<f64, crate::Error> {
         }),
         _ => Err(crate::Error::Protocol {
             message: "expected bulk string for float".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame array to a vector of bytes (for LRANGE).
+#[inline]
+pub fn frame_to_vec_bytes_list(frame: Frame) -> Result<Vec<Bytes>, crate::Error> {
+    match frame {
+        Frame::Array(arr) => {
+            let mut result = Vec::with_capacity(arr.len());
+            for item in arr {
+                match item {
+                    Frame::BulkString(Some(b)) => result.push(b),
+                    Frame::Error(e) => {
+                        return Err(crate::Error::Server {
+                            message: String::from_utf8_lossy(&e).into_owned(),
+                        })
+                    }
+                    _ => {
+                        return Err(crate::Error::Protocol {
+                            message: "unexpected frame type in list array".to_string(),
+                        })
+                    }
+                }
+            }
+            Ok(result)
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "expected array frame for list".to_string(),
+        }),
+    }
+}
+
+/// Converts a frame to a BLPOP/BRPOP response (key, value).
+#[inline]
+pub fn frame_to_blocking_pop(frame: Frame) -> Result<Option<(String, Bytes)>, crate::Error> {
+    match frame {
+        Frame::Null => Ok(None),
+        Frame::Array(mut arr) => {
+            if arr.len() != 2 {
+                return Err(crate::Error::Protocol {
+                    message: "BLPOP/BRPOP response must have 2 elements".to_string(),
+                });
+            }
+
+            let value_frame = arr.pop().unwrap();
+            let key_frame = arr.pop().unwrap();
+
+            let key = frame_to_string(key_frame)?;
+            let value = match value_frame {
+                Frame::BulkString(Some(b)) => b,
+                _ => {
+                    return Err(crate::Error::Protocol {
+                        message: "unexpected value frame type".to_string(),
+                    })
+                }
+            };
+
+            Ok(Some((key, value)))
+        }
+        Frame::Error(e) => Err(crate::Error::Server {
+            message: String::from_utf8_lossy(&e).into_owned(),
+        }),
+        _ => Err(crate::Error::Protocol {
+            message: "unexpected frame type for blocking pop".to_string(),
         }),
     }
 }
@@ -1120,5 +1296,90 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], "str1");
         assert_eq!(result[1], "str2");
+    }
+
+    #[test]
+    fn test_lpush_cmd() {
+        let cmd = lpush(
+            "key".to_string(),
+            vec![Bytes::from("val1"), Bytes::from("val2")],
+        );
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("LPUSH".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("val1".into())),
+                Frame::BulkString(Some("val2".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_rpush_cmd() {
+        let cmd = rpush("key".to_string(), vec![Bytes::from("val1")]);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("RPUSH".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("val1".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_lrange_cmd() {
+        let cmd = lrange("key", 0, -1);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("LRANGE".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("0".into())),
+                Frame::BulkString(Some("-1".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_lrem_cmd() {
+        let cmd = lrem("key", 2, "value");
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("LREM".into())),
+                Frame::BulkString(Some("key".into())),
+                Frame::BulkString(Some("2".into())),
+                Frame::BulkString(Some("value".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_blpop_cmd() {
+        let cmd = blpop(vec!["key1".to_string(), "key2".to_string()], 5);
+        assert_eq!(
+            cmd.into_frame(),
+            Frame::Array(vec![
+                Frame::BulkString(Some("BLPOP".into())),
+                Frame::BulkString(Some("key1".into())),
+                Frame::BulkString(Some("key2".into())),
+                Frame::BulkString(Some("5".into()))
+            ])
+        );
+    }
+
+    #[test]
+    fn test_frame_to_blocking_pop() {
+        let frame = Frame::Array(vec![
+            Frame::BulkString(Some("mylist".into())),
+            Frame::BulkString(Some("value".into())),
+        ]);
+        let result = frame_to_blocking_pop(frame).unwrap();
+        assert!(result.is_some());
+        let (key, value) = result.unwrap();
+        assert_eq!(key, "mylist");
+        assert_eq!(value, Bytes::from("value"));
     }
 }

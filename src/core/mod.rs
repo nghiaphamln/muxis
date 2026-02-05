@@ -13,6 +13,7 @@
 
 #![warn(missing_docs)]
 
+use crate::proto::frame::Frame;
 use bytes::Bytes;
 use std::time::Duration;
 
@@ -1160,6 +1161,392 @@ impl Client {
         let cmd = command::hsetnx(key.to_string(), field.to_string(), value);
         let frame = self.connection.send_command(cmd.into_frame()).await?;
         command::frame_to_bool(frame)
+    }
+
+    /// Pushes values to the head of a list (LPUSH).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `values` - Slice of values to push.
+    ///
+    /// # Returns
+    ///
+    /// The length of the list after the push operation.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let len = client.lpush("mylist", &[Bytes::from("value1"), Bytes::from("value2")]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn lpush(&mut self, key: &str, values: &[Bytes]) -> Result<i64> {
+        let values_vec = values.to_vec();
+        let cmd = command::lpush(key.to_string(), values_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Pushes values to the tail of a list (RPUSH).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `values` - Slice of values to push.
+    ///
+    /// # Returns
+    ///
+    /// The length of the list after the push operation.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let len = client.rpush("mylist", &[Bytes::from("value1"), Bytes::from("value2")]).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn rpush(&mut self, key: &str, values: &[Bytes]) -> Result<i64> {
+        let values_vec = values.to_vec();
+        let cmd = command::rpush(key.to_string(), values_vec);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Removes and returns the first element of a list (LPOP).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    ///
+    /// # Returns
+    ///
+    /// `Some(Bytes)` if the list exists and has elements, or `None` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let value = client.lpop("mylist").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn lpop(&mut self, key: &str) -> Result<Option<Bytes>> {
+        let cmd = command::lpop(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bytes(frame)
+    }
+
+    /// Removes and returns the last element of a list (RPOP).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    ///
+    /// # Returns
+    ///
+    /// `Some(Bytes)` if the list exists and has elements, or `None` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let value = client.rpop("mylist").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn rpop(&mut self, key: &str) -> Result<Option<Bytes>> {
+        let cmd = command::rpop(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bytes(frame)
+    }
+
+    /// Returns the length of a list (LLEN).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    ///
+    /// # Returns
+    ///
+    /// The length of the list, or 0 if the key does not exist.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let len = client.llen("mylist").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn llen(&mut self, key: &str) -> Result<i64> {
+        let cmd = command::llen(key.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Returns a range of elements from a list (LRANGE).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `start` - Start index (0-based, negative values count from the end).
+    /// * `stop` - Stop index (inclusive).
+    ///
+    /// # Returns
+    ///
+    /// A vector of elements in the specified range.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let elements = client.lrange("mylist", 0, -1).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn lrange(&mut self, key: &str, start: i64, stop: i64) -> Result<Vec<Bytes>> {
+        let cmd = command::lrange(key.to_string(), start, stop);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_vec_bytes_list(frame)
+    }
+
+    /// Returns an element from a list by index (LINDEX).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `index` - The index (0-based, negative values count from the end).
+    ///
+    /// # Returns
+    ///
+    /// `Some(Bytes)` if the index is valid, or `None` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let element = client.lindex("mylist", 0).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn lindex(&mut self, key: &str, index: i64) -> Result<Option<Bytes>> {
+        let cmd = command::lindex(key.to_string(), index);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bytes(frame)
+    }
+
+    /// Sets the value of an element in a list by index (LSET).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `index` - The index (0-based, negative values count from the end).
+    /// * `value` - The value to set.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.lset("mylist", 0, Bytes::from("newvalue")).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn lset(&mut self, key: &str, index: i64, value: Bytes) -> Result<()> {
+        let cmd = command::lset(key.to_string(), index, value);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::parse_frame_response(frame)?;
+        Ok(())
+    }
+
+    /// Removes elements from a list (LREM).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `count` - Number of elements to remove (positive: head to tail, negative: tail to head, 0: all).
+    /// * `value` - The value to remove.
+    ///
+    /// # Returns
+    ///
+    /// The number of elements removed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let removed = client.lrem("mylist", 0, Bytes::from("value")).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn lrem(&mut self, key: &str, count: i64, value: Bytes) -> Result<i64> {
+        let cmd = command::lrem(key.to_string(), count, value);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_int(frame)
+    }
+
+    /// Trims a list to the specified range (LTRIM).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `start` - Start index (0-based, negative values count from the end).
+    /// * `stop` - Stop index (inclusive).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// client.ltrim("mylist", 0, 9).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn ltrim(&mut self, key: &str, start: i64, stop: i64) -> Result<()> {
+        let cmd = command::ltrim(key.to_string(), start, stop);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::parse_frame_response(frame)?;
+        Ok(())
+    }
+
+    /// Atomically removes the last element from a list and pushes it to another list (RPOPLPUSH).
+    ///
+    /// # Arguments
+    ///
+    /// * `source` - The source list key.
+    /// * `destination` - The destination list key.
+    ///
+    /// # Returns
+    ///
+    /// `Some(Bytes)` if the operation succeeded, or `None` if source is empty.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let element = client.rpoplpush("source", "destination").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn rpoplpush(&mut self, source: &str, destination: &str) -> Result<Option<Bytes>> {
+        let cmd = command::rpoplpush(source.to_string(), destination.to_string());
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_bytes(frame)
+    }
+
+    /// Removes and returns the first element from one of multiple lists, blocking if needed (BLPOP).
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - Slice of list keys to check.
+    /// * `timeout` - Timeout in seconds (0 means block indefinitely).
+    ///
+    /// # Returns
+    ///
+    /// `Some((key, value))` if an element was popped, or `None` if timeout occurred.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let result = client.blpop(&["list1", "list2"], 5).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn blpop(&mut self, keys: &[&str], timeout: u64) -> Result<Option<(String, Bytes)>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::blpop(keys_vec, timeout);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_blocking_pop(frame)
+    }
+
+    /// Removes and returns the last element from one of multiple lists, blocking if needed (BRPOP).
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - Slice of list keys to check.
+    /// * `timeout` - Timeout in seconds (0 means block indefinitely).
+    ///
+    /// # Returns
+    ///
+    /// `Some((key, value))` if an element was popped, or `None` if timeout occurred.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let result = client.brpop(&["list1", "list2"], 5).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn brpop(&mut self, keys: &[&str], timeout: u64) -> Result<Option<(String, Bytes)>> {
+        let keys_vec = keys.iter().map(|k| k.to_string()).collect();
+        let cmd = command::brpop(keys_vec, timeout);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        command::frame_to_blocking_pop(frame)
+    }
+
+    /// Returns the index of the first matching element in a list (LPOS).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The list key.
+    /// * `element` - The element to search for.
+    ///
+    /// # Returns
+    ///
+    /// `Some(i64)` with the index if found, or `None` if not found.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use muxis::core::Client;
+    /// # use bytes::Bytes;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    /// let position = client.lpos("mylist", Bytes::from("value")).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn lpos(&mut self, key: &str, element: Bytes) -> Result<Option<i64>> {
+        let cmd = command::lpos(key.to_string(), element);
+        let frame = self.connection.send_command(cmd.into_frame()).await?;
+        match frame {
+            Frame::Null => Ok(None),
+            Frame::Integer(i) => Ok(Some(i)),
+            _ => command::frame_to_int(frame).map(Some),
+        }
     }
 }
 
