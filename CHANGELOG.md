@@ -5,9 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+# Changelog
 
-### Phase 5: Cluster Resilience (Complete)
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.4.0] - 2025-02-05
+
+Major release with Redis Cluster resilience features and comprehensive documentation restructuring.
+
+### Added
+
+**Documentation Restructuring**
+- New `docs/` directory with organized documentation
+- `docs/getting-started.md` - Installation and basic usage guide
+- `docs/commands.md` - Complete command reference (75+ commands)
+- `docs/cluster.md` - Redis Cluster setup and usage guide
+- `docs/multiplexing.md` - Multiplexing architecture explanation
+- `docs/architecture.md` - Internal design and implementation details
+- Simplified README.md with table of contents
+
+**Phase 5: Cluster Resilience**
 
 Production-grade resilience features for handling node failures, network issues, and topology changes during Redis Cluster operations.
 

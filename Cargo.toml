@@ -1,10 +1,10 @@
 [package]
 name = "muxis"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Muxis Contributors"]
 description = "High-performance Redis client for Rust with multiplexing"
-repository = "https://github.com/nexorion/muxis"
+repository = "https://github.com/nghiaphamln/muxis"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["redis", "database", "async", "multiplexing"]

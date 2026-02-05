@@ -1,366 +1,174 @@
 # Muxis
 
-> High-performance Redis client for Rust with multiplexing and cluster support
+High-performance async Redis client for Rust with multiplexing and cluster support.
 
-**Version**: 0.3.0 (Phase 3 Complete - Standalone API)
-
-[![Rust](https://img.shields.io/badge/rust-1.83%2B-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/muxis.svg)](https://crates.io/crates/muxis)
+[![Documentation](https://docs.rs/muxis/badge.svg)](https://docs.rs/muxis)
+[![License](https://img.shields.io/crates/l/muxis.svg)](LICENSE)
 
 ## Features
 
-- **Complete RESP2 Protocol** - Full Redis Serialization Protocol support
-- **Multiplexed Connections** - Multiple concurrent requests over single connection
-- **Type-Safe Commands** - Rust-native API with compile-time safety
-- **75+ Redis Commands** - String, Hash, List, Set, Sorted Set operations
-- **Cluster Support** - Slot-based routing, topology discovery (feature flag: `cluster`)
-- **Connection Management** - Timeouts, authentication, database selection
-- **Security** - Password and ACL authentication support
-- **Production Ready** - 180 tests (111 core + 69 cluster), zero warnings
+- **Async/Await**: Built on Tokio for high-performance async I/O
+- **Multiplexing**: Multiple concurrent requests over single connection
+- **Cluster Support**: Production-grade Redis Cluster with automatic routing and failover
+- **RESP Protocol**: Full RESP2 support with RESP3 coming soon
+- **Type Safety**: Strongly-typed API with comprehensive error handling
+- **Zero-Copy**: Efficient parsing using `bytes::Bytes`
+- **75+ Commands**: String, Hash, List, Set, Sorted Set operations
 
 ## Quick Start
 
-```rust
-use bytes::Bytes;
-use muxis::{Client, Result};
+Add Muxis to your `Cargo.toml`:
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Connect to Redis
-    let mut client = Client::connect("redis://127.0.0.1:6379").await?;
-
-    // Set a value
-    client.set("mykey", Bytes::from("Hello, Muxis!")).await?;
-
-    // Get a value
-    if let Some(value) = client.get("mykey").await? {
-        println!("Value: {}", String::from_utf8_lossy(&value));
-    }
-
-    // Increment a counter
-    let count = client.incr("counter").await?;
-    println!("Counter: {}", count);
-
-    // Delete keys
-    client.del("mykey").await?;
-    client.del("counter").await?;
-
-    Ok(())
-}
+```toml
+[dependencies]
+muxis = "0.4"
 ```
 
-### Cluster Mode
+Basic usage:
 
 ```rust
-use muxis::cluster::ClusterClient;
+use muxis::Client;
 use bytes::Bytes;
 
 #[tokio::main]
 async fn main() -> muxis::Result<()> {
-    // Connect to Redis Cluster (seed nodes)
-    let client = ClusterClient::connect("127.0.0.1:7000,127.0.0.1:7001").await?;
-
-    // Commands are automatically routed to correct node based on key slot
-    client.set("mykey", Bytes::from("Hello, Cluster!")).await?;
+    let mut client = Client::connect("redis://127.0.0.1:6379").await?;
+    
+    client.set("mykey", Bytes::from("Hello, Muxis!")).await?;
     
     if let Some(value) = client.get("mykey").await? {
         println!("Value: {}", String::from_utf8_lossy(&value));
     }
-
-    // Check cluster status
-    println!("Cluster nodes: {}", client.node_count());
-    println!("Fully covered: {}", client.is_fully_covered());
-
+    
     Ok(())
 }
 ```
 
-More examples available in the `examples/` directory:
-- `basic.rs` - Basic Redis operations
-- `builder.rs` - Using ClientBuilder for configuration
-- `pipeline.rs` - Multiple commands in sequence
-- `auth.rs` - Authentication and database selection
-
-## Supported Commands
-
-**Phase 3 Complete**: 75 Redis commands implemented across 5 categories
-
-### String Commands (7)
-`GET`, `SET`, `MGET`, `MSET`, `SETNX`, `SETEX`, `GETDEL`, `APPEND`, `STRLEN`, `INCR`, `DECR`
-
-### Key Commands (8)
-`DEL`, `EXISTS`, `TYPE`, `EXPIRE`, `EXPIREAT`, `TTL`, `PERSIST`, `RENAME`, `SCAN`
-
-### Hash Commands (13)
-`HSET`, `HGET`, `HMSET`, `HMGET`, `HGETALL`, `HDEL`, `HEXISTS`, `HLEN`, `HKEYS`, `HVALS`, `HINCRBY`, `HINCRBYFLOAT`, `HSETNX`
-
-### List Commands (14)
-`LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LLEN`, `LRANGE`, `LINDEX`, `LSET`, `LREM`, `LTRIM`, `RPOPLPUSH`, `BLPOP`, `BRPOP`, `LPOS`
-
-### Set Commands (13)
-`SADD`, `SREM`, `SPOP`, `SMEMBERS`, `SISMEMBER`, `SCARD`, `SRANDMEMBER`, `SDIFF`, `SINTER`, `SUNION`, `SDIFFSTORE`, `SINTERSTORE`, `SUNIONSTORE`
-
-### Sorted Set Commands (20)
-`ZADD`, `ZREM`, `ZRANGE`, `ZRANGEBYSCORE`, `ZRANK`, `ZSCORE`, `ZCARD`, `ZCOUNT`, `ZINCRBY`, `ZREVRANGE`, `ZREVRANK`, `ZREMRANGEBYRANK`, `ZREMRANGEBYSCORE`, `ZPOPMIN`, `ZPOPMAX`, `BZPOPMIN`, `BZPOPMAX`, `ZLEXCOUNT`, `ZRANGEBYLEX`, `ZREMRANGEBYLEX`
-
-### Connection Commands
-`PING`, `ECHO`, `AUTH`, `SELECT`, `CLIENT SETNAME`
-
-### Cluster Commands (6)
-`CLUSTER SLOTS`, `CLUSTER NODES`, `CLUSTER INFO`, `ASKING`, `READONLY`, `READWRITE`
-
-**Note**: Full cluster support available with `cluster` feature flag. Currently supports:
-- CRC16 slot calculation with hash tag support `{...}`
-- Topology discovery and management via CLUSTER SLOTS/NODES
-- Slot-based routing (16384 slots)
-- Connection pooling per node with health tracking
-- MOVED/ASK redirect handling with automatic retry
-- Production-grade resilience:
-  - MOVED storm detection and topology refresh throttling
-  - Automatic retry on IO errors with exponential backoff
-  - Node failure detection and seamless failover
-- Basic operations: GET, SET, DEL, EXISTS
-
-## Usage Examples
-
-### Connection Configuration
+Redis Cluster:
 
 ```rust
-use muxis::ClientBuilder;
+use muxis::cluster::ClusterClient;
 
-let mut client = ClientBuilder::new()
-    .address("redis://127.0.0.1:6379")
-    .database(2)
-    .build()
-    .await?;
+let client = ClusterClient::connect("127.0.0.1:7000,127.0.0.1:7001").await?;
+client.set("key", Bytes::from("value")).await?;
 ```
 
-### Basic Commands
+## Documentation
 
-```rust
-use bytes::Bytes;
+- **[Getting Started](docs/getting-started.md)** - Installation, basic usage, connection URLs
+- **[Commands Reference](docs/commands.md)** - Complete command documentation
+- **[Cluster Mode](docs/cluster.md)** - Redis Cluster support, topology, failover
+- **[Multiplexing](docs/multiplexing.md)** - How concurrent requests work
+- **[Architecture](docs/architecture.md)** - Internal design and implementation
 
-// String operations
-client.set("user:1:name", Bytes::from("Alice")).await?;
-let name = client.get("user:1:name").await?;
+## Feature Flags
 
-// Atomic operations
-let views = client.incr("page:views").await?;
-let likes = client.decr("post:dislikes").await?;
+Enable optional features in `Cargo.toml`:
 
-// Key deletion
-client.del("key1").await?;
-client.del("key2").await?;
-
-// Ping server
-let pong = client.ping().await?;
+```toml
+[dependencies]
+muxis = { version = "0.4", features = ["cluster", "tls"] }
 ```
 
-### Multiplexed Concurrent Requests
+Available features:
 
-```rust
-use tokio::task;
+| Feature | Description |
+|---------|-------------|
+| `cluster` | Redis Cluster support with slot routing |
+| `tls` | TLS/SSL encrypted connections |
+| `resp3` | RESP3 protocol support (experimental) |
+| `json` | JSON serialization helpers |
+| `streams` | Redis Streams support |
+| `test-utils` | Testing utilities for integration tests |
 
-// Spawn multiple concurrent requests
-let handles: Vec<_> = (0..100)
-    .map(|i| {
-        let client = client.clone();
-        task::spawn(async move {
-            client.set(&format!("key:{}", i), &format!("value:{}", i)).await
-        })
-    })
-    .collect();
+## Project Status
 
-// Wait for all requests to complete
-for handle in handles {
-    handle.await??;
-}
+**Current Version**: 0.4.0
+
+**Completed Features**:
+- ✅ RESP2 protocol codec
+- ✅ Multiplexed connections
+- ✅ 75+ Redis commands
+- ✅ Connection pooling
+- ✅ Redis Cluster with resilience (MOVED/ASK handling, failure detection, automatic retry)
+- ✅ Comprehensive documentation
+
+**In Development** (Roadmap):
+- 🚧 Pipelining API
+- 🚧 Pub/Sub support
+- 🚧 Transactions (MULTI/EXEC)
+- 🚧 Lua scripting
+- 🚧 RESP3 protocol
+- 🚧 Sentinel support
+
+See [ROADMAP.md](ROADMAP.md) for detailed development plan.
+
+## Examples
+
+The `examples/` directory contains working examples:
+
+```bash
+# Basic usage
+cargo run --example basic
+
+# Using ClientBuilder
+cargo run --example builder
+
+# Pipeline execution
+cargo run --example pipeline
+
+# Authentication
+cargo run --example auth
+
+# Redis Cluster
+cargo run --example cluster --features cluster
 ```
-
-### Error Handling
-
-```rust
-use muxis::Error;
-
-match client.get("mykey").await {
-    Ok(Some(value)) => println!("Value: {:?}", value),
-    Ok(None) => println!("Key not found"),
-    Err(e) => println!("Error: {}", e),
-}
-```
-
-## Architecture
-
-Muxis is organized as a single-crate library with well-defined modules:
-
-### Modules
-
-- **muxis::proto**: RESP protocol codec (encoder/decoder)
-- **muxis::core**: Connection management, multiplexing, and command execution
-- **muxis::cluster**: Cluster support with slot-based routing, resilience features (feature-gated: `cluster`)
-- **muxis::testing**: Test utilities (feature-gated with `test-utils`)
-
-### Multiplexing Model
-
-Muxis uses a sophisticated multiplexing architecture to handle concurrent requests efficiently:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    MultiplexedConnection                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐         ┌──────────────┐                  │
-│  │ Request Queue│ ──────> │ Writer Task  │ ────> TCP Socket │
-│  │   (mpsc)     │         │              │                  │
-│  └──────────────┘         └──────────────┘                  │
-│                                                              │
-│  ┌──────────────┐         ┌──────────────┐                  │
-│  │ Pending Map  │ <────── │ Reader Task  │ <──── TCP Socket │
-│  │ (VecDeque)   │         │              │                  │
-│  └──────────────┘         └──────────────┘                  │
-│                                                              │
-│  Each request: Request sent via bounded channel              │
-│  RESP ordered replies: Strict FIFO queue matching            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Key Features**:
-- Background writer task serializes commands and writes to socket
-- Background reader task reads frames and dispatches to waiting requests
-- Request ID tracking with oneshot channels for response delivery
-- Bounded request queue with backpressure
-- FIFO ordering guarantees for pipelined requests
-
-### Protocol Layer
-
-The RESP2 protocol implementation provides:
-- Streaming parser for incremental frame decoding
-- Zero-copy encoding using `bytes::Bytes`
-- Buffer overflow protection (configurable 512MB max)
-- Safe handling of malformed input without panics
 
 ## Performance
 
 Muxis is designed for high performance:
 
-- **Zero-copy parsing** where possible using `bytes::Bytes`
-- **Multiplexing** eliminates connection overhead for concurrent operations
-- **Bounded queues** with backpressure prevent memory exhaustion
-- **Tokio-native** for efficient async I/O
-- **Minimal allocations** in hot paths
+- **Multiplexing**: Share single connection across many concurrent requests
+- **Zero-copy**: Efficient buffer management with `bytes::Bytes`
+- **Connection pooling**: Reuse connections in cluster mode
+- **Smart routing**: Direct routing to correct cluster node
 
-## Security
+Benchmarks available in `benches/` directory:
 
-- **URL validation**: Strict parsing and scheme validation (redis:// and rediss://)
-- **DOS protection**: Configurable buffer limits prevent memory exhaustion attacks
-- **Safe error handling**: No panics in library code, all errors returned as Results
-- **Timeout enforcement**: Configurable timeouts for all I/O operations
+```bash
+cargo bench --features cluster
+```
 
 ## Testing
-
-Muxis has comprehensive test coverage:
-
-- **180 total tests**: 111 unit tests (core) + 69 unit tests (cluster)
-- **Protocol tests**: Frame encoding/decoding with edge cases
-- **Command tests**: All 75 standalone commands with unit and integration tests
-- **Cluster tests**: Slot calculation, error parsing, topology management, connection pooling
-- **Connection tests**: Builder patterns, multiplexing, command execution
-- **100% public API documentation** with runnable examples
-- **Zero clippy warnings**: Clean code following Rust best practices
 
 Run tests:
 
 ```bash
-# Unit tests (180 tests)
-cargo test --all-features --lib
+# Unit tests (no Redis required)
+cargo test --lib --all-features
 
-# Integration tests (requires Redis at 127.0.0.1:6379)
-cargo test --all-features -- --ignored
+# Integration tests (requires Redis)
+cargo test --test integration -- --ignored
 
-# Documentation tests
-cargo test --doc --all-features
-
-# All tests
-cargo test --all-features
+# Cluster tests (requires Redis Cluster)
+cargo test --test cluster_integration -- --ignored
 ```
-
-## Development
-
-### Requirements
-
-- Rust 1.83 or later (enforced via `rust-toolchain.toml`)
-- Docker (for integration tests)
-
-### Building
-
-```bash
-# Build all crates
-cargo build --all-targets --all-features
-
-# Build release version
-cargo build --release --all-targets --all-features
-
-# Check without building (faster)
-cargo check --all-targets --all-features
-```
-
-### Code Quality
-
-```bash
-# Format code
-cargo fmt --all
-
-# Run clippy
-cargo clippy --all-targets --all-features -- -D warnings
-
-# Full quality check (required before commit)
-cargo fmt --all && cargo clippy --all-targets --all-features -- -D warnings
-```
-
-### Documentation
-
-```bash
-# Build documentation
-cargo doc --all-features --no-deps
-
-# Build and open in browser
-cargo doc --all-features --no-deps --open
-```
-
-See [AGENTS.md](AGENTS.md) for detailed development guidelines.
-
-## Project Status
-
-Muxis is in active development. Version 0.3.0 provides a solid foundation with RESP2 protocol support and multiplexed connections for standalone Redis servers.
-
-**v0.3.0 Changes:**
-- Refactored from multi-crate workspace to single-crate architecture
-- Simplified public API with cleaner imports
-- Added comprehensive examples in `examples/` directory
-- Improved module organization and documentation
-
-Current status:
-- Phase 0: Repository scaffolding - COMPLETE
-- Phase 1: RESP codec + basic connection - COMPLETE
-- Phase 2: Multiplexing stable - COMPLETE
-- Phase 3: Standalone API (75 commands) - COMPLETE
-- Phase 4: Cluster routing foundation - IN PROGRESS (85%)
-- Phase 5+: See [ROADMAP.md](ROADMAP.md)
-
-## Minimum Supported Rust Version (MSRV)
-
-Muxis requires Rust 1.83 or later. The MSRV may be updated in minor version releases.
 
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-Key areas for contribution:
-- Additional Redis commands
-- Cluster support implementation
-- RESP3 protocol
-- Performance optimizations
-- Documentation improvements
+For AI coding agents, see [AGENTS.md](AGENTS.md) for development guidelines and commands.
+
+## Versioning
+
+Muxis follows [Semantic Versioning 2.0](https://semver.org/).
+
+Current version `0.4.0` indicates:
+- Public API is not yet stable (breaking changes may occur)
+- Production-ready for internal use
+- Approaching 1.0.0 with feature completion
 
 ## License
 
@@ -371,15 +179,18 @@ Licensed under either of:
 
 at your option.
 
-## Related Projects
+## Resources
 
-- [redis-rs](https://github.com/redis-rs/redis-rs): Popular Redis client for Rust
-- [fred](https://github.com/aembke/fred.rs): Another async Redis client
-- [Redis Protocol Specification](https://redis.io/docs/reference/protocol-spec/)
+- **Documentation**: https://docs.rs/muxis
+- **Repository**: https://github.com/nghiaphamln/muxis
+- **Crates.io**: https://crates.io/crates/muxis
+- **Roadmap**: [ROADMAP.md](ROADMAP.md)
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 
 ## Acknowledgments
 
-Muxis is built on the shoulders of giants:
-- [Tokio](https://tokio.rs/): Asynchronous runtime
-- [bytes](https://github.com/tokio-rs/bytes): Efficient byte buffer management
-- The Rust community for excellent async ecosystem
+Muxis is inspired by [mini-redis](https://github.com/tokio-rs/mini-redis) and built with:
+
+- [Tokio](https://tokio.rs/) - Async runtime
+- [Bytes](https://github.com/tokio-rs/bytes) - Zero-copy buffer management
+- [Thiserror](https://github.com/dtolnay/thiserror) - Error handling
