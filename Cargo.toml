@@ -28,6 +28,7 @@ serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.49", features = ["full", "test-util"] }
+criterion = { version = "0.5", features = ["async_tokio"] }
 
 [features]
 default = []
@@ -37,3 +38,8 @@ resp3 = []
 json = ["serde", "serde_json"]
 streams = []
 test-utils = []
+
+[[bench]]
+name = "cluster_benchmark"
+harness = false
+required-features = ["cluster"]
