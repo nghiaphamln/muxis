@@ -105,12 +105,14 @@ where
     pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), std::io::Error> {
         self.encoder.encode(frame);
         let data = self.encoder.take();
-        
+
         match self.write_timeout {
             Some(duration) => {
                 tokio::time::timeout(duration, self.stream.write_all(&data))
                     .await
-                    .map_err(|_| std::io::Error::new(std::io::ErrorKind::TimedOut, "write timeout"))??;
+                    .map_err(|_| {
+                        std::io::Error::new(std::io::ErrorKind::TimedOut, "write timeout")
+                    })??;
             }
             None => {
                 self.stream.write_all(&data).await?;
@@ -122,21 +124,27 @@ where
     /// Reads a frame from the connection.
     pub async fn read_frame(&mut self) -> Result<Frame, crate::Error> {
         loop {
-            if let Some(frame) = self.decoder.decode().map_err(|e| crate::Error::Protocol { message: e })? {
+            if let Some(frame) = self
+                .decoder
+                .decode()
+                .map_err(|e| crate::Error::Protocol { message: e })?
+            {
                 return Ok(frame);
             }
 
             let mut buf = vec![0u8; 4096];
             let read_future = self.stream.read(&mut buf);
-            
+
             let n = match self.read_timeout {
-                Some(duration) => {
-                    tokio::time::timeout(duration, read_future)
-                        .await
-                        .map_err(|_| crate::Error::Io { source: std::io::Error::new(std::io::ErrorKind::TimedOut, "read timeout") })?
-                        .map_err(|e| crate::Error::Io { source: e })?
-                }
-                None => read_future.await.map_err(|e| crate::Error::Io { source: e })?,
+                Some(duration) => tokio::time::timeout(duration, read_future)
+                    .await
+                    .map_err(|_| crate::Error::Io {
+                        source: std::io::Error::new(std::io::ErrorKind::TimedOut, "read timeout"),
+                    })?
+                    .map_err(|e| crate::Error::Io { source: e })?,
+                None => read_future
+                    .await
+                    .map_err(|e| crate::Error::Io { source: e })?,
             };
 
             if n == 0 {
@@ -156,21 +164,27 @@ where
     /// Reads a frame from the connection.
     pub async fn read_frame(&mut self) -> Result<Frame, crate::Error> {
         loop {
-            if let Some(frame) = self.decoder.decode().map_err(|e| crate::Error::Protocol { message: e })? {
+            if let Some(frame) = self
+                .decoder
+                .decode()
+                .map_err(|e| crate::Error::Protocol { message: e })?
+            {
                 return Ok(frame);
             }
 
             let mut buf = vec![0u8; 4096];
             let read_future = self.stream.read(&mut buf);
-            
+
             let n = match self.timeout {
-                Some(duration) => {
-                    tokio::time::timeout(duration, read_future)
-                        .await
-                        .map_err(|_| crate::Error::Io { source: std::io::Error::new(std::io::ErrorKind::TimedOut, "read timeout") })?
-                        .map_err(|e| crate::Error::Io { source: e })?
-                }
-                None => read_future.await.map_err(|e| crate::Error::Io { source: e })?,
+                Some(duration) => tokio::time::timeout(duration, read_future)
+                    .await
+                    .map_err(|_| crate::Error::Io {
+                        source: std::io::Error::new(std::io::ErrorKind::TimedOut, "read timeout"),
+                    })?
+                    .map_err(|e| crate::Error::Io { source: e })?,
+                None => read_future
+                    .await
+                    .map_err(|e| crate::Error::Io { source: e })?,
             };
 
             if n == 0 {
@@ -191,12 +205,14 @@ where
     pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), std::io::Error> {
         self.encoder.encode(frame);
         let data = self.encoder.take();
-        
+
         match self.timeout {
             Some(duration) => {
                 tokio::time::timeout(duration, self.stream.write_all(&data))
                     .await
-                    .map_err(|_| std::io::Error::new(std::io::ErrorKind::TimedOut, "write timeout"))??;
+                    .map_err(|_| {
+                        std::io::Error::new(std::io::ErrorKind::TimedOut, "write timeout")
+                    })??;
             }
             None => {
                 self.stream.write_all(&data).await?;
@@ -265,10 +281,11 @@ mod tests {
             let conn = Connection::new(stream);
             let (mut reader, mut writer) = conn.split();
 
-            writer.write_frame(&Frame::Array(vec![Frame::BulkString(Some("PING".into()))]))
+            writer
+                .write_frame(&Frame::Array(vec![Frame::BulkString(Some("PING".into()))]))
                 .await
                 .unwrap();
-            
+
             let frame = reader.read_frame().await.unwrap();
             assert_eq!(frame, Frame::SimpleString(b"PONG".to_vec()));
         };

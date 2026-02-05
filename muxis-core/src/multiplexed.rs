@@ -1,9 +1,9 @@
-use std::fmt;
-use tokio::sync::{mpsc, oneshot};
-use tokio::io::{AsyncRead, AsyncWrite};
-use tracing::{debug, instrument, error};
-use muxis_proto::frame::Frame;
 use crate::connection::{Connection, ConnectionReader, ConnectionWriter};
+use muxis_proto::frame::Frame;
+use std::fmt;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::sync::{mpsc, oneshot};
+use tracing::{debug, error, instrument};
 
 /// A request sent to the multiplexer.
 struct Request {
@@ -53,10 +53,7 @@ impl MultiplexedConnection {
     #[instrument(skip(self), level = "debug")]
     pub async fn send_command(&self, frame: Frame) -> crate::Result<Frame> {
         let (response_tx, response_rx) = oneshot::channel();
-        let request = Request {
-            frame,
-            response_tx,
-        };
+        let request = Request { frame, response_tx };
 
         // Send request to writer task
         self.sender

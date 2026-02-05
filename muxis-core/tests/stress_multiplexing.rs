@@ -1,8 +1,8 @@
 use muxis_core::builder::ClientBuilder;
 use muxis_proto::codec::{Decoder, Encoder};
 use muxis_proto::frame::Frame;
-use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 
 #[tokio::test]
 async fn test_multiplexing_stress() {
@@ -25,7 +25,7 @@ async fn test_multiplexing_stress() {
 
                 loop {
                     let n = match socket.read(&mut buf).await {
-                        Ok(n) if n == 0 => return, // EOF
+                        Ok(0) => return, // EOF
                         Ok(n) => n,
                         Err(_) => return,
                     };
@@ -36,7 +36,7 @@ async fn test_multiplexing_stress() {
                         // For any command, respond with PONG or OK
                         let response = match frame {
                             Frame::Array(ref args) => {
-                                if let Some(Frame::BulkString(Some(cmd))) = args.get(0) {
+                                if let Some(Frame::BulkString(Some(cmd))) = args.first() {
                                     if cmd.eq_ignore_ascii_case(b"PING") {
                                         Frame::SimpleString(b"PONG".to_vec())
                                     } else {
@@ -64,7 +64,7 @@ async fn test_multiplexing_stress() {
     // Use a large queue to accommodate burst
     let client = ClientBuilder::new()
         .address(addr_str)
-        .queue_size(10000) 
+        .queue_size(10000)
         .build()
         .await
         .expect("Failed to connect");
