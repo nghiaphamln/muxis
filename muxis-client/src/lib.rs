@@ -32,4 +32,4 @@
 //! - [`muxis_cluster`] - Cluster support
 //! - [`muxis_proto`] - Protocol codec
 
-pub use muxis_core::{Client, ClientPool};
+pub use muxis_core::Client;
