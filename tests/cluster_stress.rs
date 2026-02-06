@@ -14,7 +14,7 @@
 #![cfg(feature = "cluster")]
 
 use bytes::Bytes;
-use muxis::cluster::ClusterClient;
+use muxis::ClusterClient;
 use muxis::Result;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;

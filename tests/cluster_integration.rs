@@ -18,7 +18,7 @@
 #![cfg(feature = "cluster")]
 
 use bytes::Bytes;
-use muxis::cluster::ClusterClient;
+use muxis::ClusterClient;
 use muxis::Result;
 
 /// Helper function to create a cluster client for testing.

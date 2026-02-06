@@ -5,12 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Changelog
+## [Unreleased]
 
-All notable changes to this project will be documented in this file.
+### Added
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- **Stability Infrastructure**: Added public API snapshot testing infrastructure.
+  - Tests are now in place to detect accidental breaking changes to the public API.
+  - Added `#[non_exhaustive]` to `Error` enum and `PoolConfig` struct for future extensibility.
+  - Added `Debug` trait implementation for `ClusterClient` to improve developer experience.
+  - Added `max_frame_size` configuration to `ClientBuilder` (default 512MB) to control memory limits.
+
+### Changed
+
+- **API Visibility Hardening**: Internal modules are now hidden from the public API.
+  - `core`, `proto`, and `cluster` modules are now `pub(crate)` instead of `pub`.
+  - Users should import types via `muxis::{Client, ClusterClient, Error, ...}`.
+  - This change allows internal refactoring without breaking user code.
+
+### Migration Guide
+
+Users who were importing internal types directly should update their imports:
+
+```rust
+// Before (internal paths)
+use muxis::cluster::ClusterClient;
+use muxis::core::Client;
+
+// After (public API)
+use muxis::ClusterClient;
+use muxis::Client;
+```
 
 ## [0.5.0] - 2026-02-06
 

@@ -13,18 +13,6 @@ use crate::core::command::Cmd;
 /// # Response Format
 ///
 /// Returns an array of slot ranges with their corresponding master and replica nodes.
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::cluster_slots;
-///
-/// let cmd = cluster_slots();
-/// // Send to Redis: CLUSTER SLOTS
-/// # }
-/// ```
 pub fn cluster_slots() -> Cmd {
     Cmd::new("CLUSTER").arg("SLOTS")
 }
@@ -33,18 +21,6 @@ pub fn cluster_slots() -> Cmd {
 ///
 /// Returns a list of all nodes in the cluster with their ID, address, flags,
 /// master/replica status, ping/pong times, and slots served.
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::cluster_nodes;
-///
-/// let cmd = cluster_nodes();
-/// // Send to Redis: CLUSTER NODES
-/// # }
-/// ```
 pub fn cluster_nodes() -> Cmd {
     Cmd::new("CLUSTER").arg("NODES")
 }
@@ -59,18 +35,6 @@ pub fn cluster_nodes() -> Cmd {
 /// - cluster_slots_fail
 /// - cluster_known_nodes
 /// - cluster_size
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::cluster_info;
-///
-/// let cmd = cluster_info();
-/// // Send to Redis: CLUSTER INFO
-/// # }
-/// ```
 pub fn cluster_info() -> Cmd {
     Cmd::new("CLUSTER").arg("INFO")
 }
@@ -82,61 +46,8 @@ pub fn cluster_info() -> Cmd {
 /// is being migrated.
 ///
 /// ASKING is a one-time flag - it only affects the immediately following command.
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::asking;
-///
-/// let cmd = asking();
-/// // Send to Redis: ASKING
-/// # }
-/// ```
 pub fn asking() -> Cmd {
     Cmd::new("ASKING")
-}
-
-/// Creates a READONLY command.
-///
-/// Enables read queries for a connection to a Redis Cluster replica node.
-/// Normally, replica nodes only accept read commands when the connection
-/// is in READONLY mode.
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::readonly;
-///
-/// let cmd = readonly();
-/// // Send to Redis: READONLY
-/// # }
-/// ```
-pub fn readonly() -> Cmd {
-    Cmd::new("READONLY")
-}
-
-/// Creates a READWRITE command.
-///
-/// Disables READONLY mode for a connection. After this, the connection
-/// will only accept write commands on master nodes.
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::readwrite;
-///
-/// let cmd = readwrite();
-/// // Send to Redis: READWRITE
-/// # }
-/// ```
-pub fn readwrite() -> Cmd {
-    Cmd::new("READWRITE")
 }
 
 #[cfg(test)]
@@ -196,32 +107,6 @@ mod tests {
         if let Frame::Array(arr) = frame {
             assert_eq!(arr.len(), 1);
             assert_eq!(arr[0], Frame::BulkString(Some(Bytes::from("ASKING"))));
-        } else {
-            panic!("Expected Array frame");
-        }
-    }
-
-    #[test]
-    fn test_readonly_cmd() {
-        let cmd = readonly();
-        let frame = cmd.into_frame();
-
-        if let Frame::Array(arr) = frame {
-            assert_eq!(arr.len(), 1);
-            assert_eq!(arr[0], Frame::BulkString(Some(Bytes::from("READONLY"))));
-        } else {
-            panic!("Expected Array frame");
-        }
-    }
-
-    #[test]
-    fn test_readwrite_cmd() {
-        let cmd = readwrite();
-        let frame = cmd.into_frame();
-
-        if let Frame::Array(arr) = frame {
-            assert_eq!(arr.len(), 1);
-            assert_eq!(arr[0], Frame::BulkString(Some(Bytes::from("READWRITE"))));
         } else {
             panic!("Expected Array frame");
         }

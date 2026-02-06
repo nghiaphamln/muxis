@@ -25,7 +25,7 @@
 //! ```no_run
 //! # #[cfg(feature = "cluster")]
 //! # async fn example() -> muxis::Result<()> {
-//! use muxis::cluster::ClusterClient;
+//! use muxis::ClusterClient;
 //! use bytes::Bytes;
 //!
 //! // Connect to Redis Cluster (comma-separated seed nodes)
@@ -46,7 +46,4 @@ mod slot;
 mod topology;
 
 pub use client::ClusterClient;
-pub use errors::parse_redis_error;
-pub use pool::{ConnectionPool, NodeConnection, PoolConfig};
-pub use slot::{key_slot, SLOT_COUNT};
-pub use topology::{ClusterTopology, NodeFlags, NodeId, NodeInfo, SlotRange};
+pub use slot::key_slot;

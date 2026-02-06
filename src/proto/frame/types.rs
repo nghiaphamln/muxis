@@ -25,6 +25,7 @@ pub enum Frame {
     Null,
 }
 
+#[cfg(test)]
 impl Frame {
     /// Converts the frame to a human-readable string representation.
     ///

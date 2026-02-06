@@ -5,16 +5,6 @@ use bytes::Bytes;
 ///
 /// Commands are built using the builder pattern and converted to frames
 /// for transmission over the connection.
-///
-/// # Example
-///
-/// ```
-/// use muxis::core::command::{Cmd, get, set};
-///
-/// let cmd = Cmd::new("SET").arg("key").arg("value");
-/// let get_cmd = get("key");
-/// let set_cmd = set("key", "new_value");
-/// ```
 #[derive(Debug)]
 pub struct Cmd {
     args: Vec<Bytes>,

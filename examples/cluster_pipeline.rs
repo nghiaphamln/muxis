@@ -16,7 +16,7 @@
 #[cfg(feature = "cluster")]
 use bytes::Bytes;
 #[cfg(feature = "cluster")]
-use muxis::cluster::ClusterClient;
+use muxis::ClusterClient;
 
 #[cfg(feature = "cluster")]
 #[tokio::main]

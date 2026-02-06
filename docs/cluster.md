@@ -5,7 +5,7 @@ Muxis provides production-grade Redis Cluster support with automatic slot routin
 ## Quick Start
 
 ```rust
-use muxis::cluster::ClusterClient;
+use muxis::ClusterClient;
 use bytes::Bytes;
 
 #[tokio::main]

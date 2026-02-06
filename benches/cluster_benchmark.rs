@@ -16,7 +16,7 @@
 
 use bytes::Bytes;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use muxis::cluster::ClusterClient;
+use muxis::ClusterClient;
 use tokio::runtime::Runtime;
 
 /// Creates a test client for benchmarking.
@@ -130,7 +130,7 @@ fn bench_cluster_exists(c: &mut Criterion) {
 
 /// Benchmark: Slot calculation.
 fn bench_slot_calculation(c: &mut Criterion) {
-    use muxis::cluster::key_slot;
+    use muxis::key_slot;
 
     let mut group = c.benchmark_group("slot_calculation");
 

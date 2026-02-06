@@ -1,6 +1,10 @@
-use muxis::proto::codec::{Decoder, Encoder};
-use muxis::proto::frame::Frame;
-use muxis::ClientBuilder;
+//! Internal stress tests for multiplexing.
+//!
+//! These tests verify the multiplexing behavior under high concurrency.
+
+use crate::core::builder::ClientBuilder;
+use crate::proto::codec::{Decoder, Encoder};
+use crate::proto::frame::Frame;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -10,7 +14,6 @@ async fn test_multiplexing_stress() {
     let addr = listener.local_addr().unwrap();
     let addr_str = format!("redis://{}", addr);
 
-    // Spawn Mock Server
     tokio::spawn(async move {
         loop {
             let (mut socket, _) = match listener.accept().await {
@@ -25,7 +28,7 @@ async fn test_multiplexing_stress() {
 
                 loop {
                     let n = match socket.read(&mut buf).await {
-                        Ok(0) => return, // EOF
+                        Ok(0) => return,
                         Ok(n) => n,
                         Err(_) => return,
                     };
@@ -33,7 +36,6 @@ async fn test_multiplexing_stress() {
                     decoder.append(&buf[..n]);
 
                     while let Ok(Some(frame)) = decoder.decode() {
-                        // For any command, respond with PONG or OK
                         let response = match frame {
                             Frame::Array(ref args) => {
                                 if let Some(Frame::BulkString(Some(cmd))) = args.first() {
@@ -60,8 +62,6 @@ async fn test_multiplexing_stress() {
         }
     });
 
-    // Client Connect
-    // Use a large queue to accommodate burst
     let client = ClientBuilder::new()
         .address(addr_str)
         .queue_size(10000)
@@ -71,7 +71,6 @@ async fn test_multiplexing_stress() {
 
     let mut handles = Vec::new();
 
-    // Spawn 1000 concurrent requests
     for _ in 0..1000 {
         let mut client = client.clone();
         handles.push(tokio::spawn(async move {

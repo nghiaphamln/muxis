@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, RwLock};
 
-use super::commands::{asking, cluster_slots};
+use super::commands::{asking, cluster_info, cluster_nodes, cluster_slots};
 use super::errors::parse_redis_error;
 use super::pool::{ConnectionPool, PoolConfig};
 use super::slot::{key_slot, SLOT_COUNT};
@@ -65,6 +65,7 @@ async fn connect_to_node(address: &str) -> Result<MultiplexedConnection> {
 /// When many MOVED redirects occur in a short time window (e.g., during slot
 /// migration or resharding), we want to refresh topology but not on every
 /// single redirect to avoid excessive load.
+#[derive(Debug)]
 struct MovedStormTracker {
     /// Count of MOVED redirects in current window
     moved_count: AtomicUsize,
@@ -132,7 +133,7 @@ impl MovedStormTracker {
 ///
 /// Provides automatic slot-based routing to cluster nodes and handles
 /// MOVED and ASK redirects transparently.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ClusterClient {
     /// Initial seed nodes
     seed_nodes: Arc<Vec<String>>,
@@ -290,7 +291,7 @@ impl ClusterClient {
     /// ```
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// use muxis::cluster::ClusterClient;
+    /// use muxis::ClusterClient;
     ///
     /// // Keys with same hash tag will map to same slot
     /// let keys = vec!["user:{123}:profile", "user:{123}:settings"];
@@ -554,7 +555,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
     ///
@@ -593,7 +594,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # use bytes::Bytes;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
@@ -626,7 +627,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
     /// let deleted = client.del("mykey").await?;
@@ -665,7 +666,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
     ///
@@ -685,6 +686,47 @@ impl ClusterClient {
             Frame::Integer(n) => Ok(n > 0),
             _ => Err(Error::Protocol {
                 message: "unexpected response type for EXISTS".to_string(),
+            }),
+        }
+    }
+
+    /// Returns information about the cluster state (CLUSTER INFO).
+    ///
+    /// Executes the command on a random node.
+    pub async fn cluster_info(&self) -> Result<String> {
+        let cmd = cluster_info();
+        // Pick a random node (seed node or from topology)
+        // For simplicity, use refresh_topology logic's seed node or first available
+        // But we want to use the pool.
+        // Let's pick slot 0.
+        let frame = self.execute_with_redirects(cmd.into_frame(), 0).await?;
+        match frame {
+            Frame::BulkString(Some(bytes)) => {
+                String::from_utf8(bytes.to_vec()).map_err(|e| Error::Protocol {
+                    message: format!("invalid utf8 in cluster info: {}", e),
+                })
+            }
+            _ => Err(Error::Protocol {
+                message: "unexpected response for CLUSTER INFO".to_string(),
+            }),
+        }
+    }
+
+    /// Returns the cluster node configuration (CLUSTER NODES).
+    ///
+    /// Executes the command on a random node.
+    pub async fn cluster_nodes(&self) -> Result<String> {
+        let cmd = cluster_nodes();
+        // Pick slot 0
+        let frame = self.execute_with_redirects(cmd.into_frame(), 0).await?;
+        match frame {
+            Frame::BulkString(Some(bytes)) => {
+                String::from_utf8(bytes.to_vec()).map_err(|e| Error::Protocol {
+                    message: format!("invalid utf8 in cluster nodes: {}", e),
+                })
+            }
+            _ => Err(Error::Protocol {
+                message: "unexpected response for CLUSTER NODES".to_string(),
             }),
         }
     }
