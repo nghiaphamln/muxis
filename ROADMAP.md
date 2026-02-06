@@ -302,9 +302,9 @@ Retry Policy:
 
 **DoD**: Command coverage documentation, tests for each command group
 
-**Summary**: **75 commands** implemented across 5 categories
-- 111 unit tests (all passing)
-- 81 integration tests (all compile, require Redis to run)
+**Summary**: **97+ commands** implemented across 5 categories
+- 195 unit tests (all passing)
+
 - Zero clippy warnings
 - 100% public API documentation
 
@@ -788,12 +788,12 @@ let client = Client::sentinel()
 | 0.1.0 | M0 + M1 | RESP codec, basic connection |
 | 0.2.0 | M2 | Multiplexing stable |
 | 0.3.0 | M3 | Standalone command coverage |
-| 0.4.0 | M4 + M5 | Cluster support with redirects |
-| 0.5.0 | M6 | Pipelining, ergonomics |
-| 0.6.0 | M7 | Pub/Sub |
-| 0.7.0 | M8 | Transactions, Lua, Streams |
-| 0.8.0 | M9 | RESP3, TLS, Security |
-| 0.9.0 | M10 | Sentinel, replica routing |
+| 0.5.0 | M4 + M5 | Cluster support with redirects |
+| 0.6.0 | M6 | Pipelining (example only, module pending) |
+| 0.7.0 | M7 | Pub/Sub |
+| 0.8.0 | M8 | Transactions, Lua, Streams |
+| 0.9.0 | M9 | RESP3, TLS, Security |
+| 1.0.0 | M10 | Sentinel, replica routing |
 
 ### 1.0 Criteria
 
