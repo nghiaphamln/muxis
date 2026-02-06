@@ -780,7 +780,7 @@ pub fn frame_to_int(frame: Frame) -> Result<i64, crate::Error> {
 pub fn frame_to_bool(frame: Frame) -> Result<bool, crate::Error> {
     match frame {
         Frame::Integer(i) => Ok(i != 0),
-        Frame::BulkString(b) => Ok(b.map_or(false, |bytes| !bytes.is_empty())),
+        Frame::BulkString(b) => Ok(b.is_some_and(|bytes| !bytes.is_empty())),
         Frame::Error(e) => Err(crate::Error::Server {
             message: String::from_utf8_lossy(&e).into_owned(),
         }),
