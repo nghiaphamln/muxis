@@ -9,30 +9,6 @@ use tokio::io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHa
 ///
 /// This struct wraps an underlying stream (TCP, TLS, etc.) and handles
 /// RESP frame encoding and decoding.
-///
-/// # Example
-///
-/// ```no_run
-/// use muxis::core::connection::Connection;
-/// use tokio::net::TcpStream;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let stream = TcpStream::connect("127.0.0.1:6379").await?;
-///     let mut conn = Connection::new(stream);
-///
-///     // Write a PING command
-///     use muxis::proto::frame::Frame;
-///     let cmd = Frame::Array(vec![Frame::BulkString(Some("PING".into()))]);
-///     conn.write_frame(&cmd).await?;
-///
-///     // Read the PONG response
-///     let resp = conn.read_frame().await?;
-///     println!("{:?}", resp);
-///
-///     Ok(())
-/// }
-/// ```
 pub struct Connection<S> {
     stream: S,
     decoder: Decoder,

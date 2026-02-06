@@ -25,7 +25,7 @@
 //! ```no_run
 //! # #[cfg(feature = "cluster")]
 //! # async fn example() -> muxis::Result<()> {
-//! use muxis::cluster::ClusterClient;
+//! use muxis::ClusterClient;
 //! use bytes::Bytes;
 //!
 //! // Connect to Redis Cluster (comma-separated seed nodes)

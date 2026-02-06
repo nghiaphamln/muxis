@@ -291,7 +291,7 @@ impl ClusterClient {
     /// ```
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// use muxis::cluster::ClusterClient;
+    /// use muxis::ClusterClient;
     ///
     /// // Keys with same hash tag will map to same slot
     /// let keys = vec!["user:{123}:profile", "user:{123}:settings"];
@@ -555,7 +555,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
     ///
@@ -594,7 +594,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # use bytes::Bytes;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
@@ -627,7 +627,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
     /// let deleted = client.del("mykey").await?;
@@ -666,7 +666,7 @@ impl ClusterClient {
     /// ```no_run
     /// # #[cfg(feature = "cluster")]
     /// # {
-    /// # use muxis::cluster::ClusterClient;
+    /// # use muxis::ClusterClient;
     /// # async fn example() -> muxis::Result<()> {
     /// let client = ClusterClient::connect("127.0.0.1:7000").await?;
     ///

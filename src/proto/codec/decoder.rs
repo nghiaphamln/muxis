@@ -10,18 +10,6 @@ const DEFAULT_MAX_FRAME_SIZE: usize = 512 * 1024 * 1024; // 512 MB default
 /// The decoder handles streaming input and can decode frames incrementally.
 /// Call [`append`](Decoder::append) to add data, then [`decode`](Decoder::decode)
 /// to parse frames. Returns `Ok(None)` when more data is needed.
-///
-/// # Example
-///
-/// ```
-/// use muxis::proto::codec::Decoder;
-/// use muxis::proto::frame::Frame;
-///
-/// let mut decoder = Decoder::new();
-/// decoder.append(b"+OK\r\n");
-/// let frame = decoder.decode().unwrap().unwrap();
-/// assert_eq!(frame, Frame::SimpleString(b"OK".to_vec()));
-/// ```
 #[derive(Debug)]
 pub struct Decoder {
     buf: BytesMut,

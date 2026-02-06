@@ -67,7 +67,7 @@ impl Default for ConnectionSettings {
 /// # Example
 ///
 /// ```no_run
-/// use muxis::core::Client;
+/// use muxis::Client;
 /// use bytes::Bytes;
 ///
 /// #[tokio::main]
@@ -431,7 +431,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -460,7 +460,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -496,7 +496,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -524,7 +524,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -552,7 +552,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -587,7 +587,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -618,7 +618,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -647,7 +647,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -677,7 +677,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -707,7 +707,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -737,7 +737,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -766,7 +766,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -795,7 +795,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -825,7 +825,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -854,7 +854,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -893,7 +893,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -921,7 +921,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -945,7 +945,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -981,7 +981,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1009,7 +1009,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1037,7 +1037,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let count = client.hdel("myhash", &["field1", "field2"]).await?;
@@ -1065,7 +1065,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let exists = client.hexists("myhash", "field1").await?;
@@ -1091,7 +1091,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let count = client.hlen("myhash").await?;
@@ -1117,7 +1117,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let keys = client.hkeys("myhash").await?;
@@ -1143,7 +1143,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let values = client.hvals("myhash").await?;
@@ -1171,7 +1171,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let new_value = client.hincrby("myhash", "counter", 5).await?;
@@ -1199,7 +1199,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let new_value = client.hincrbyfloat("myhash", "price", 2.5).await?;
@@ -1227,7 +1227,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1255,7 +1255,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1284,7 +1284,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1312,7 +1312,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let value = client.lpop("mylist").await?;
@@ -1338,7 +1338,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let value = client.rpop("mylist").await?;
@@ -1364,7 +1364,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let len = client.llen("mylist").await?;
@@ -1392,7 +1392,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let elements = client.lrange("mylist", 0, -1).await?;
@@ -1419,7 +1419,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let element = client.lindex("mylist", 0).await?;
@@ -1443,7 +1443,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1473,7 +1473,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1498,7 +1498,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// client.ltrim("mylist", 0, 9).await?;
@@ -1526,7 +1526,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let element = client.rpoplpush("source", "destination").await?;
@@ -1553,7 +1553,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let result = client.blpop(&["list1", "list2"], 5).await?;
@@ -1581,7 +1581,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let result = client.brpop(&["list1", "list2"], 5).await?;
@@ -1609,7 +1609,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1641,7 +1641,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1670,7 +1670,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1698,7 +1698,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let member = client.spop("myset").await?;
@@ -1724,7 +1724,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let members = client.smembers("myset").await?;
@@ -1751,7 +1751,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # use bytes::Bytes;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
@@ -1778,7 +1778,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let size = client.scard("myset").await?;
@@ -1804,7 +1804,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let member = client.srandmember("myset").await?;
@@ -1833,7 +1833,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let diff = client.sdiff(&["set1", "set2"]).await?;
@@ -1860,7 +1860,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let inter = client.sinter(&["set1", "set2"]).await?;
@@ -1887,7 +1887,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let union = client.sunion(&["set1", "set2"]).await?;
@@ -1915,7 +1915,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let count = client.sdiffstore("dest", &["set1", "set2"]).await?;
@@ -1943,7 +1943,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let count = client.sinterstore("dest", &["set1", "set2"]).await?;
@@ -1971,7 +1971,7 @@ impl Client {
     /// # Example
     ///
     /// ```no_run
-    /// # use muxis::core::Client;
+    /// # use muxis::Client;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut client = Client::connect("redis://127.0.0.1:6379").await?;
     /// let count = client.sunionstore("dest", &["set1", "set2"]).await?;

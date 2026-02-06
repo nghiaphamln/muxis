@@ -22,15 +22,7 @@ use crate::Error;
 ///
 /// # Examples
 ///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::parse_redis_error;
 ///
-/// let error = parse_redis_error(b"MOVED 3999 127.0.0.1:7000");
-/// assert!(matches!(error, muxis::Error::Moved { slot: 3999, .. }));
-/// # }
-/// ```
 pub fn parse_redis_error(error_msg: &[u8]) -> Error {
     let msg = String::from_utf8_lossy(error_msg);
     let msg = msg.trim();

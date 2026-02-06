@@ -30,7 +30,7 @@ const CRC16: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_SDLC);
 /// ```
 /// # #[cfg(feature = "cluster")]
 /// # {
-/// use muxis::cluster::key_slot;
+/// use muxis::key_slot;
 ///
 /// assert_eq!(key_slot("foo"), key_slot("foo"));
 /// assert_eq!(key_slot("{user1000}.following"), key_slot("{user1000}.followers"));

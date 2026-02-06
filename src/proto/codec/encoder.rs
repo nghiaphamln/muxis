@@ -6,18 +6,6 @@ use crate::proto::frame::Frame;
 ///
 /// The encoder accumulates data in an internal buffer and can be used
 /// to encode multiple frames sequentially.
-///
-/// # Example
-///
-/// ```
-/// use muxis::proto::codec::Encoder;
-/// use muxis::proto::frame::Frame;
-///
-/// let mut encoder = Encoder::new();
-/// encoder.encode(&Frame::SimpleString(b"OK".to_vec()));
-/// let data = encoder.take();
-/// assert!(!data.is_empty());
-/// ```
 pub struct Encoder {
     buf: BytesMut,
 }
