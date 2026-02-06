@@ -12,6 +12,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-06
+
+### Changed
+
+- **TLS Provider**: Switched from `native-tls` to `rustls` for a modern, memory-safe TLS implementation.
+  - Replaced `native-tls` and `tokio-native-tls` with `rustls` and `tokio-rustls`.
+  - Added `webpki-roots` for secure-by-default certificate validation.
+- **Dependency Optimization**: Optimized `tokio` features to reduce compile time and binary size.
+  - Removed `full` feature.
+  - Enabled only required features: `net`, `sync`, `time`, `rt`, `io-util`, `macros`.
+
+### Fixed
+
+- **TLS Connection**: Fixed logic in `connect_inner` that previously ignored the `is_tls` parameter.
+- **Documentation**: Added missing documentation for `TlsConnectorInner`.
+
 ## [0.4.0] - 2025-02-05
 
 Major release with Redis Cluster resilience features and comprehensive documentation restructuring.

@@ -1,21 +1,32 @@
-use std::io;
+use std::sync::Arc;
+use tokio_rustls::rustls::{ClientConfig, RootCertStore};
+use tokio_rustls::TlsConnector;
 
-use native_tls::TlsConnector;
-
-/// Inner wrapper for TLS connector.
+/// Internal TLS connector wrapper using rustls.
+#[derive(Clone)]
 pub struct TlsConnectorInner {
     connector: TlsConnector,
 }
 
 impl TlsConnectorInner {
-    /// Creates a new TLS connector.
-    pub fn new() -> Result<Self, io::Error> {
-        let connector = TlsConnector::new().map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        Ok(Self { connector })
+    /// Creates a new TLS connector with default secure configuration.
+    ///
+    /// Uses `webpki-roots` for Mozilla's root certificates and `ring` as the crypto provider.
+    pub fn new() -> crate::Result<Self> {
+        let mut root_store = RootCertStore::empty();
+        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+
+        let config = ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+
+        Ok(Self {
+            connector: TlsConnector::from(Arc::new(config)),
+        })
     }
 
-    /// Consumes the wrapper and returns the inner connector.
-    pub fn into_inner(self) -> TlsConnector {
-        self.connector
+    /// Returns the underlying `TlsConnector`.
+    pub fn connector(&self) -> TlsConnector {
+        self.connector.clone()
     }
 }

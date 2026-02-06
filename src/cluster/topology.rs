@@ -511,10 +511,7 @@ impl ClusterTopology {
                 .values()
                 .filter(|node| {
                     node.is_replica()
-                        && node
-                            .master_id
-                            .as_ref()
-                            .map_or(false, |mid| mid == &master.id)
+                        && node.master_id.as_ref().is_some_and(|mid| mid == &master.id)
                 })
                 .cloned()
                 .collect();
