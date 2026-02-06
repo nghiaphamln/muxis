@@ -276,7 +276,7 @@ REFRESH_COOLDOWN = 500ms   // Minimum time between topology refreshes
 ## Notes for AI Agents
 
 - This is a **single-crate project** (no workspace)
-- **Version 0.3.0** with cluster support complete (Phases 4-5)
+- **Version 0.5.0** with cluster support complete (Phases 4-5)
 - Module structure: `proto/` (codec), `core/` (connections), `cluster/` (resilience + routing)
 - **Cluster support**: Fully implemented with production-grade resilience (Phase 5 complete)
 - Examples: `basic`, `builder`, `pipeline`, `auth`, `cluster`, `cluster_pipeline`
