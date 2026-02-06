@@ -64,7 +64,7 @@ impl Client {
         password: Option<String>,
         database: Option<u8>,
         client_name: Option<String>,
-        _tls: bool,
+        is_tls: bool,
         queue_size: usize,
     ) -> Result<Self> {
         // Parse the address using url crate for proper validation
@@ -92,8 +92,49 @@ impl Client {
             .await
             .map_err(|e| Error::Io { source: e })?;
 
-        let mut connection = connection::Connection::new(stream);
+        if is_tls {
+            #[cfg(feature = "tls")]
+            {
+                let connector = tls::TlsConnectorInner::new()?.connector();
+                let domain = rustls::pki_types::ServerName::try_from(host)
+                    .map_err(|e| Error::InvalidArgument {
+                        message: e.to_string(),
+                    })?
+                    .to_owned();
+                let tls_stream = connector
+                    .connect(domain, stream)
+                    .await
+                    .map_err(|e| Error::Io { source: e })?;
 
+                let mut connection = connection::Connection::new(tls_stream);
+                Self::initialize_connection(&mut connection, password, database, client_name)
+                    .await?;
+                let connection = multiplexed::MultiplexedConnection::new(connection, queue_size);
+                Ok(Self { connection })
+            }
+            #[cfg(not(feature = "tls"))]
+            {
+                Err(Error::InvalidArgument {
+                    message: "TLS feature not enabled".to_string(),
+                })
+            }
+        } else {
+            let mut connection = connection::Connection::new(stream);
+            Self::initialize_connection(&mut connection, password, database, client_name).await?;
+            let connection = multiplexed::MultiplexedConnection::new(connection, queue_size);
+            Ok(Self { connection })
+        }
+    }
+
+    async fn initialize_connection<S>(
+        connection: &mut connection::Connection<S>,
+        password: Option<String>,
+        database: Option<u8>,
+        client_name: Option<String>,
+    ) -> Result<()>
+    where
+        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+    {
         if let Some(pwd) = password {
             let auth_cmd = command::auth(pwd);
             connection
@@ -124,9 +165,7 @@ impl Client {
             let _resp = connection.read_frame().await?;
         }
 
-        let connection = multiplexed::MultiplexedConnection::new(connection, queue_size);
-
-        Ok(Self { connection })
+        Ok(())
     }
 
     /// Connects to a Redis server using the provided address.

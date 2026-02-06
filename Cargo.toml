@@ -1,6 +1,6 @@
 [package]
 name = "muxis"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 authors = ["Muxis Contributors"]
 description = "High-performance Redis client for Rust with multiplexing"
@@ -13,7 +13,7 @@ categories = ["database", "asynchronous"]
 [dependencies]
 bytes = { version = "1.11.1", features = ["std"] }
 thiserror = "2.0.18"
-tokio = { version = "1.49", features = ["full"] }
+tokio = { version = "1.49", features = ["net", "sync", "time", "rt", "io-util", "macros"] }
 tracing = "0.1"
 url = "2.5.8"
 cfg-if = "1.0.4"
@@ -21,8 +21,9 @@ futures = "0.3.31"
 
 # Optional dependencies
 crc = { version = "3.4.0", optional = true }
-native-tls = { version = "0.2.14", optional = true }
-tokio-native-tls = { version = "0.3", optional = true }
+rustls = { version = "0.23", optional = true, default-features = false, features = ["ring"] }
+tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["ring"] }
+webpki-roots = { version = "0.26", optional = true }
 serde = { version = "1.0.228", optional = true, features = ["derive"] }
 serde_json = { version = "1.0.149", optional = true }
 
@@ -33,7 +34,7 @@ criterion = { version = "0.5.1", features = ["async_tokio"] }
 [features]
 default = []
 cluster = ["crc"]
-tls = ["native-tls", "tokio-native-tls"]
+tls = ["rustls", "tokio-rustls", "webpki-roots"]
 resp3 = []
 json = ["serde", "serde_json"]
 streams = []
