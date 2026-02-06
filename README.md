@@ -48,7 +48,7 @@ async fn main() -> muxis::Result<()> {
 Redis Cluster:
 
 ```rust
-use muxis::cluster::ClusterClient;
+use muxis::ClusterClient;
 
 let client = ClusterClient::connect("127.0.0.1:7000,127.0.0.1:7001").await?;
 client.set("key", Bytes::from("value")).await?;

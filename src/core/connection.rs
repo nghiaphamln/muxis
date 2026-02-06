@@ -81,6 +81,12 @@ where
         self
     }
 
+    /// Configures the maximum frame size for the decoder.
+    pub fn with_max_frame_size(mut self, max_frame_size: usize) -> Self {
+        self.decoder = Decoder::with_max_frame_size(max_frame_size);
+        self
+    }
+
     /// Splits the connection into a read half and a write half.
     ///
     /// This allows independent reading and writing, which is useful for

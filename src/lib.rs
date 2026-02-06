@@ -27,11 +27,14 @@
 
 #![warn(missing_docs)]
 
-pub mod core;
-pub mod proto;
+pub(crate) mod core;
+pub(crate) mod proto;
 
 #[cfg(feature = "cluster")]
-pub mod cluster;
+pub(crate) mod cluster;
+
+#[cfg(test)]
+mod stress;
 
 #[cfg(feature = "test-utils")]
 pub mod testing;
@@ -40,5 +43,7 @@ pub mod testing;
 pub use crate::core::builder::ClientBuilder;
 pub use crate::core::{Client, Error, Result};
 
+#[cfg(feature = "cluster")]
+pub use crate::cluster::key_slot;
 #[cfg(feature = "cluster")]
 pub use crate::cluster::ClusterClient;

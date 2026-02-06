@@ -32,6 +32,7 @@ pub struct ClientBuilder {
     write_timeout: Option<Duration>,
     tls: bool,
     queue_size: Option<usize>,
+    max_frame_size: Option<usize>,
 }
 
 impl ClientBuilder {
@@ -151,6 +152,17 @@ impl ClientBuilder {
         self
     }
 
+    /// Sets the maximum frame size for the decoder.
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - Maximum frame size in bytes (default: 512MB)
+    #[inline]
+    pub fn max_frame_size(mut self, size: usize) -> Self {
+        self.max_frame_size = Some(size);
+        self
+    }
+
     /// Builds the [`Client`] connection.
     ///
     /// # Errors
@@ -163,15 +175,17 @@ impl ClientBuilder {
             message: "address is required".to_string(),
         })?;
 
-        let client = Client::connect_inner(
-            address,
-            self.password,
-            self.database,
-            self.client_name,
-            self.tls,
-            self.queue_size.unwrap_or(1024),
-        )
-        .await?;
+        let settings = crate::core::ConnectionSettings {
+            client_name: self.client_name,
+            password: self.password,
+            database: self.database,
+            queue_size: self.queue_size.unwrap_or(1024),
+            read_timeout: self.read_timeout,
+            write_timeout: self.write_timeout,
+            max_frame_size: self.max_frame_size.unwrap_or(512 * 1024 * 1024),
+        };
+
+        let client = Client::connect_inner(address, self.tls, settings).await?;
 
         Ok(client)
     }

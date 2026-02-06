@@ -1,4 +1,5 @@
 use bytes::Buf;
+use bytes::BytesMut;
 
 use crate::proto::frame::Frame;
 
@@ -23,17 +24,14 @@ const DEFAULT_MAX_FRAME_SIZE: usize = 512 * 1024 * 1024; // 512 MB default
 /// ```
 #[derive(Debug)]
 pub struct Decoder {
-    buf: bytes::BytesMut,
+    buf: BytesMut,
     max_frame_size: usize,
 }
 
 impl Decoder {
     /// Creates a new decoder with an empty buffer.
     pub fn new() -> Self {
-        Self {
-            buf: bytes::BytesMut::new(),
-            max_frame_size: DEFAULT_MAX_FRAME_SIZE,
-        }
+        Self::with_max_frame_size(DEFAULT_MAX_FRAME_SIZE)
     }
 
     /// Creates a new decoder with a custom maximum frame size.
@@ -43,7 +41,7 @@ impl Decoder {
     /// * `max_frame_size` - Maximum size in bytes for a single frame
     pub fn with_max_frame_size(max_frame_size: usize) -> Self {
         Self {
-            buf: bytes::BytesMut::new(),
+            buf: BytesMut::new(),
             max_frame_size,
         }
     }
@@ -212,11 +210,6 @@ impl Decoder {
             }
         }
         None
-    }
-
-    /// Returns true if the buffer contains at least some data that could be a frame.
-    pub fn has_decodable_frame(&self) -> bool {
-        !self.buf.is_empty()
     }
 }
 

@@ -7,6 +7,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Errors that can occur when interacting with Redis protocol.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum Error {
     /// An IO error occurred.
     #[error("IO error: {source}")]

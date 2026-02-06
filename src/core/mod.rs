@@ -31,7 +31,32 @@ pub mod multiplexed;
 cfg_if::cfg_if! {
     if #[cfg(feature = "tls")] {
         mod tls;
-        pub use tls::TlsConnectorInner;
+    }
+}
+
+/// Connection configuration settings.
+#[derive(Debug, Clone)]
+pub(crate) struct ConnectionSettings {
+    pub client_name: Option<String>,
+    pub password: Option<String>,
+    pub database: Option<u8>,
+    pub queue_size: usize,
+    pub read_timeout: Option<Duration>,
+    pub write_timeout: Option<Duration>,
+    pub max_frame_size: usize,
+}
+
+impl Default for ConnectionSettings {
+    fn default() -> Self {
+        Self {
+            client_name: None,
+            password: None,
+            database: None,
+            queue_size: 1024,
+            read_timeout: None,
+            write_timeout: None,
+            max_frame_size: 512 * 1024 * 1024,
+        }
     }
 }
 
@@ -61,11 +86,8 @@ pub struct Client {
 impl Client {
     async fn connect_inner(
         address: String,
-        password: Option<String>,
-        database: Option<u8>,
-        client_name: Option<String>,
         is_tls: bool,
-        queue_size: usize,
+        settings: ConnectionSettings,
     ) -> Result<Self> {
         // Parse the address using url crate for proper validation
         let parsed_url = url::Url::parse(&address).map_err(|_| Error::InvalidArgument {
@@ -106,10 +128,18 @@ impl Client {
                     .await
                     .map_err(|e| Error::Io { source: e })?;
 
-                let mut connection = connection::Connection::new(tls_stream);
-                Self::initialize_connection(&mut connection, password, database, client_name)
-                    .await?;
-                let connection = multiplexed::MultiplexedConnection::new(connection, queue_size);
+                let mut connection = connection::Connection::new(tls_stream)
+                    .with_timeouts(settings.read_timeout, settings.write_timeout)
+                    .with_max_frame_size(settings.max_frame_size);
+                Self::initialize_connection(
+                    &mut connection,
+                    settings.password,
+                    settings.database,
+                    settings.client_name,
+                )
+                .await?;
+                let connection =
+                    multiplexed::MultiplexedConnection::new(connection, settings.queue_size);
                 Ok(Self { connection })
             }
             #[cfg(not(feature = "tls"))]
@@ -119,9 +149,18 @@ impl Client {
                 })
             }
         } else {
-            let mut connection = connection::Connection::new(stream);
-            Self::initialize_connection(&mut connection, password, database, client_name).await?;
-            let connection = multiplexed::MultiplexedConnection::new(connection, queue_size);
+            let mut connection = connection::Connection::new(stream)
+                .with_timeouts(settings.read_timeout, settings.write_timeout)
+                .with_max_frame_size(settings.max_frame_size);
+            Self::initialize_connection(
+                &mut connection,
+                settings.password,
+                settings.database,
+                settings.client_name,
+            )
+            .await?;
+            let connection =
+                multiplexed::MultiplexedConnection::new(connection, settings.queue_size);
             Ok(Self { connection })
         }
     }
@@ -182,7 +221,7 @@ impl Client {
     pub async fn connect<T: AsRef<str>>(addr: T) -> Result<Self> {
         let addr_str = addr.as_ref().to_string();
         let is_tls = addr_str.starts_with("rediss://");
-        Self::connect_inner(addr_str, None, None, None, is_tls, 1024).await
+        Self::connect_inner(addr_str, is_tls, ConnectionSettings::default()).await
     }
 
     /// Sends a PING command to the server.

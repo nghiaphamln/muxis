@@ -98,47 +98,6 @@ pub fn asking() -> Cmd {
     Cmd::new("ASKING")
 }
 
-/// Creates a READONLY command.
-///
-/// Enables read queries for a connection to a Redis Cluster replica node.
-/// Normally, replica nodes only accept read commands when the connection
-/// is in READONLY mode.
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::readonly;
-///
-/// let cmd = readonly();
-/// // Send to Redis: READONLY
-/// # }
-/// ```
-pub fn readonly() -> Cmd {
-    Cmd::new("READONLY")
-}
-
-/// Creates a READWRITE command.
-///
-/// Disables READONLY mode for a connection. After this, the connection
-/// will only accept write commands on master nodes.
-///
-/// # Examples
-///
-/// ```
-/// # #[cfg(feature = "cluster")]
-/// # {
-/// use muxis::cluster::commands::readwrite;
-///
-/// let cmd = readwrite();
-/// // Send to Redis: READWRITE
-/// # }
-/// ```
-pub fn readwrite() -> Cmd {
-    Cmd::new("READWRITE")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,32 +155,6 @@ mod tests {
         if let Frame::Array(arr) = frame {
             assert_eq!(arr.len(), 1);
             assert_eq!(arr[0], Frame::BulkString(Some(Bytes::from("ASKING"))));
-        } else {
-            panic!("Expected Array frame");
-        }
-    }
-
-    #[test]
-    fn test_readonly_cmd() {
-        let cmd = readonly();
-        let frame = cmd.into_frame();
-
-        if let Frame::Array(arr) = frame {
-            assert_eq!(arr.len(), 1);
-            assert_eq!(arr[0], Frame::BulkString(Some(Bytes::from("READONLY"))));
-        } else {
-            panic!("Expected Array frame");
-        }
-    }
-
-    #[test]
-    fn test_readwrite_cmd() {
-        let cmd = readwrite();
-        let frame = cmd.into_frame();
-
-        if let Frame::Array(arr) = frame {
-            assert_eq!(arr.len(), 1);
-            assert_eq!(arr[0], Frame::BulkString(Some(Bytes::from("READWRITE"))));
         } else {
             panic!("Expected Array frame");
         }
