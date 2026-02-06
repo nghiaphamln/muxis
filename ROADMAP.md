@@ -129,7 +129,7 @@ Retry Policy:
 
 ## Phasing & Milestones
 
-### Phase 0 — Repository Scaffolding & Standards (M0) ✓ COMPLETE
+### Phase 0 — Repository Scaffolding & Standards (M0) COMPLETE
 
 **Goal**: Establish development infrastructure
 
@@ -163,11 +163,11 @@ Retry Policy:
   ```
 - [x] Tracing integration setup
 
-**DoD**: `cargo test` passes, publishable skeleton crates ✓
+**DoD**: `cargo test` passes, publishable skeleton crates
 
 ---
 
-### Phase 1 — RESP Codec + Basic Connection (M1) ✓ COMPLETE
+### Phase 1 — RESP Codec + Basic Connection (M1) COMPLETE
 
 **Goal**: Communicate with Redis standalone
 
@@ -201,12 +201,12 @@ Retry Policy:
 - [x] Read/Write timeout
 - [x] Cancellation safety (tokio::select! safe)
 
-**DoD**: Integration tests with `redis:latest` Docker pass ✓
+**DoD**: Integration tests with `redis:latest` Docker pass
 **Note**: 100% public API documentation, cancellation safety verified
 
 ---
 
-### Phase 2 — Multiplexing Stable (M2) ✓ COMPLETE
+### Phase 2 — Multiplexing Stable (M2) COMPLETE
 
 **Goal**: Single connection handles many concurrent requests
 
@@ -235,29 +235,29 @@ Retry Policy:
 - [x] Metrics hooks (tracing spans)
 - [x] Tracing spans per request
 
-**DoD**: Stress test with 10k concurrent GET/SET tasks - no deadlock, no memory leak ✓
+**DoD**: Stress test with 10k concurrent GET/SET tasks - no deadlock, no memory leak
 
 ---
 
-### Phase 3 — Standalone API Completeness (M3) ✓ COMPLETE
+### Phase 3 — Standalone API Completeness (M3) COMPLETE
 
 **Goal**: Cover everyday Redis commands
 
-#### String Commands (7/7) ✓
+#### String Commands (7/7)
 
 - [x] `APPEND`, `STRLEN`
 - [x] `MGET`, `MSET`
 - [x] `SETNX`, `SETEX`
 - [x] `GETDEL`
 
-#### Key Commands (8/8) ✓
+#### Key Commands (8/8)
 
 - [x] `EXISTS`, `TYPE`, `RENAME`
 - [x] `EXPIRE`, `EXPIREAT`
 - [x] `TTL`, `PERSIST`
 - [x] `SCAN`
 
-#### Hash Commands (13/13) ✓
+#### Hash Commands (13/13)
 
 - [x] `HSET`, `HGET`, `HMSET`, `HMGET`
 - [x] `HDEL`, `HEXISTS`
@@ -265,7 +265,7 @@ Retry Policy:
 - [x] `HINCRBY`, `HINCRBYFLOAT`
 - [x] `HSETNX`
 
-#### List Commands (14/14) ✓
+#### List Commands (14/14)
 
 - [x] `LPUSH`, `RPUSH`
 - [x] `LPOP`, `RPOP`
@@ -275,7 +275,7 @@ Retry Policy:
 - [x] `BLPOP`, `BRPOP` (blocking)
 - [x] `RPOPLPUSH`
 
-#### Set Commands (13/13) ✓
+#### Set Commands (13/13)
 
 - [x] `SADD`, `SREM`, `SPOP`
 - [x] `SMEMBERS`, `SISMEMBER`
@@ -283,7 +283,7 @@ Retry Policy:
 - [x] `SDIFF`, `SINTER`, `SUNION`
 - [x] `SDIFFSTORE`, `SINTERSTORE`, `SUNIONSTORE`
 
-#### Sorted Set Commands (20/20) ✓
+#### Sorted Set Commands (20/20)
 
 - [x] `ZADD`, `ZREM`, `ZPOPMIN`, `ZPOPMAX`
 - [x] `ZRANGE`, `ZRANGEBYSCORE`, `ZRANGEBYLEX`
@@ -294,13 +294,13 @@ Retry Policy:
 - [x] `ZREMRANGEBYRANK`, `ZREMRANGEBYSCORE`, `ZREMRANGEBYLEX`
 - [x] `BZPOPMIN`, `BZPOPMAX`
 
-#### Response Types ✓
+#### Response Types
 
 - [x] Typed responses: `i64`, `bool`, `String`, `Vec<u8>`, `Vec<String>`, `Vec<Bytes>`
 - [x] Raw frame escape hatch for advanced use
 - [x] Null handling (Option<T>)
 
-**DoD**: Command coverage documentation, tests for each command group ✓
+**DoD**: Command coverage documentation, tests for each command group
 
 **Summary**: **75 commands** implemented across 5 categories
 - 111 unit tests (all passing)
@@ -310,18 +310,18 @@ Retry Policy:
 
 ---
 
-### Phase 4 — Cluster Routing Foundation (M4) ✓ COMPLETE
+### Phase 4 — Cluster Routing Foundation (M4) COMPLETE
 
 **Goal**: Implement core cluster infrastructure with slot-based routing
 
-#### Slot Calculation ✓ COMPLETE
+#### Slot Calculation COMPLETE
 
 - [x] CRC16-CCITT implementation (16 tests)
 - [x] Key hash calculation (16384 slots)
 - [x] Hash tag support `{...}` for multi-key operations
 - [x] `key_slot()` function with full test coverage
 
-#### Error Handling ✓ COMPLETE
+#### Error Handling COMPLETE
 
 - [x] Parse MOVED redirect errors (13 tests)
 - [x] Parse ASK redirect errors
@@ -329,7 +329,7 @@ Retry Policy:
 - [x] CrossSlot error support
 - [x] `parse_redis_error()` function
 
-#### Cluster Commands ✓ COMPLETE
+#### Cluster Commands COMPLETE
 
 - [x] `CLUSTER SLOTS` command builder (6 tests)
 - [x] `CLUSTER NODES` command builder
@@ -338,7 +338,7 @@ Retry Policy:
 - [x] `READONLY` command for replica reads
 - [x] `READWRITE` command
 
-#### Topology Management ✓ COMPLETE
+#### Topology Management COMPLETE
 
 - [x] Parse `CLUSTER SLOTS` response (24 tests)
 - [x] Parse `CLUSTER NODES` response
@@ -348,7 +348,7 @@ Retry Policy:
 - [x] Master/replica relationship tracking
 - [x] `get_master_for_slot()` routing
 
-#### Connection Pool ✓ COMPLETE
+#### Connection Pool COMPLETE
 
 - [x] `ConnectionPool` for managing node connections (3 tests)
 - [x] `NodeConnection` wrapper with health tracking
@@ -356,7 +356,7 @@ Retry Policy:
 - [x] Health checking and cleanup
 - [x] Configurable pool limits
 
-#### Cluster Client ✓ COMPLETE
+#### Cluster Client COMPLETE
 
 - [x] `ClusterClient` struct with topology management (10 tests)
 - [x] Seed node parsing and connection
@@ -365,7 +365,7 @@ Retry Policy:
 - [x] Basic command methods: `get`, `set`, `del`, `exists`
 - [x] Management APIs: `node_count`, `is_fully_covered`, `refresh_topology`
 
-#### Redirect Handling ✓ COMPLETE
+#### Redirect Handling COMPLETE
 
 - [x] MOVED redirect detection and handling (8 tests)
 - [x] ASK redirect detection and handling
@@ -374,14 +374,14 @@ Retry Policy:
 - [x] `execute_with_redirects()` retry logic (max 5 redirects)
 - [x] `get_connection_for_address()` for ASK temporary nodes
 
-#### Multi-Key Validation ✓ COMPLETE
+#### Multi-Key Validation COMPLETE
 
 - [x] `validate_same_slot()` public API (5 tests)
 - [x] CROSSSLOT error prevention
 - [x] Hash tag validation support
 - [x] Empty key validation
 
-#### Examples & Documentation ✓ COMPLETE
+#### Examples & Documentation COMPLETE
 
 - [x] Comprehensive cluster example (`examples/cluster.rs`)
 - [x] Docker setup instructions
@@ -396,12 +396,12 @@ Retry Policy:
 - **100% documented**: All public APIs with runnable examples
 - **1 example**: Comprehensive cluster usage demonstration
 
-**DoD**: ✓ COMPLETE - Full cluster support with automatic redirect handling
+**DoD**: COMPLETE - Full cluster support with automatic redirect handling
 **Note**: Production-ready for cluster deployments, handles MOVED/ASK transparently
 
 ---
 
-### Phase 5 — Redirect Handling + Topology Refresh (M5) ✓ COMPLETE
+### Phase 5 — Redirect Handling + Topology Refresh (M5) COMPLETE
 
 **Goal**: Cluster resilience during resharding/failover
 

@@ -87,20 +87,20 @@ Available features:
 **Current Version**: 0.4.0
 
 **Completed Features**:
-- ✅ RESP2 protocol codec
-- ✅ Multiplexed connections
-- ✅ 75+ Redis commands
-- ✅ Connection pooling
-- ✅ Redis Cluster with resilience (MOVED/ASK handling, failure detection, automatic retry)
-- ✅ Comprehensive documentation
+- RESP2 protocol codec
+- Multiplexed connections
+- 75+ Redis commands
+- Connection pooling
+- Redis Cluster with resilience (MOVED/ASK handling, failure detection, automatic retry)
+- Comprehensive documentation
 
 **In Development** (Roadmap):
-- 🚧 Pipelining API
-- 🚧 Pub/Sub support
-- 🚧 Transactions (MULTI/EXEC)
-- 🚧 Lua scripting
-- 🚧 RESP3 protocol
-- 🚧 Sentinel support
+- Pipelining API
+- Pub/Sub support
+- Transactions (MULTI/EXEC)
+- Lua scripting
+- RESP3 protocol
+- Sentinel support
 
 See [ROADMAP.md](ROADMAP.md) for detailed development plan.
 
